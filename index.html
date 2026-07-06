@@ -1,0 +1,965 @@
+<!doctype html>
+<html lang="en">
+<head>
+<!-- Dispo Desk — disposition command center (manual deal entry) -->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0E141C; --panel:#151E29; --panel-2:#1B2735; --line:#263444;
+    --text:#EAF1F7; --muted:#8397AB; --faint:#5A6E82;
+    --money:#35D48A; --money-dim:#1c8a5a;
+    --warm:#F6A821; --cold:#FF6B6B; --accent:#4E9FFF;
+    --vip:#C792FF; --agents:#4E9FFF; --ibase:#35D48A; --fb:#F6A821; --market:#FF9F6B;
+    --r:12px; --mono:'JetBrains Mono',monospace; --disp:'Space Grotesk',sans-serif; --body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--ink);color:var(--text);font-family:var(--body);-webkit-font-smoothing:antialiased}
+  body{display:flex;min-height:100vh}
+  ::selection{background:var(--money);color:#03130b}
+  button{font-family:inherit;cursor:pointer}
+  input,select,textarea{font-family:inherit}
+  a{color:var(--accent)}
+
+  .rail{width:236px;flex:0 0 236px;background:var(--panel);border-right:1px solid var(--line);padding:22px 16px;display:flex;flex-direction:column;gap:6px;position:sticky;top:0;height:100vh}
+  .brand{display:flex;align-items:baseline;gap:8px;padding:4px 8px 20px}
+  .brand b{font-family:var(--disp);font-weight:700;font-size:20px;letter-spacing:-.5px}
+  .brand span{font-family:var(--mono);font-size:10px;color:var(--money);border:1px solid var(--money-dim);border-radius:5px;padding:2px 5px}
+  .nav{display:flex;flex-direction:column;gap:2px}
+  .nav button{display:flex;align-items:center;gap:11px;width:100%;text-align:left;background:none;border:0;color:var(--muted);padding:11px 12px;border-radius:9px;font-size:14px;font-weight:500;transition:.15s}
+  .nav button .ico{width:8px;height:8px;border-radius:2px;background:currentColor;opacity:.5;flex:0 0 8px}
+  .nav button:hover{background:var(--panel-2);color:var(--text)}
+  .nav button.on{background:var(--panel-2);color:var(--text)}
+  .nav button.on .ico{opacity:1;background:var(--money)}
+  .rail-add{margin-top:14px;background:var(--money);color:#04140c;border:0;border-radius:9px;padding:11px;font-weight:700;font-size:13.5px}
+  .rail-add:hover{filter:brightness(1.08)}
+  .rail-foot{margin-top:auto;font-size:11px;color:var(--faint);padding:8px;line-height:1.5;font-family:var(--mono)}
+  .rail-foot button{background:none;border:1px solid var(--line);color:var(--faint);font-size:10px;padding:5px 8px;border-radius:6px;margin-top:8px;font-family:var(--mono)}
+
+  .main{flex:1;min-width:0;padding:26px 30px 60px;max-width:1220px}
+  .head{display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:14px;margin-bottom:6px}
+  .head h1{font-family:var(--disp);font-weight:600;font-size:26px;margin:0;letter-spacing:-.6px}
+  .head p{margin:5px 0 0;color:var(--muted);font-size:13px}
+  .kpis{display:flex;gap:10px;flex-wrap:wrap}
+  .kpi{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 14px;min-width:92px}
+  .kpi .n{font-family:var(--mono);font-size:20px;font-weight:700}
+  .kpi .l{font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;margin-top:2px}
+  .view{margin-top:24px}
+  .view[hidden]{display:none}
+
+  .toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:16px}
+  .toolbar .grow{flex:1}
+  .chip{background:var(--panel);border:1px solid var(--line);color:var(--muted);border-radius:20px;padding:6px 13px;font-size:12.5px;font-weight:500;transition:.15s}
+  .chip:hover{color:var(--text);border-color:var(--faint)}
+  .chip.on{background:var(--text);color:var(--ink);border-color:var(--text)}
+  .search{background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:9px 13px;color:var(--text);font-size:13px;min-width:200px}
+  .search::placeholder{color:var(--faint)}
+  select.search{cursor:pointer}
+
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:14px}
+  .deal{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:16px;display:flex;flex-direction:column;gap:13px;position:relative;overflow:hidden}
+  .deal:before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--edge,var(--faint))}
+  .deal.hot{--edge:var(--money)} .deal.warm{--edge:var(--warm)} .deal.cold{--edge:var(--cold)}
+  .d-top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+  .d-addr{font-family:var(--disp);font-weight:600;font-size:15.5px;line-height:1.25}
+  .d-sub{color:var(--muted);font-size:12px;margin-top:3px;font-family:var(--mono);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .dial{flex:0 0 auto;width:60px;height:60px;position:relative}
+  .dial svg{transform:rotate(-90deg)}
+  .dial .pct{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+  .dial .pct b{font-family:var(--mono);font-size:16px;font-weight:700;line-height:1}
+  .dial .pct s{font-size:8px;color:var(--muted);text-decoration:none;text-transform:uppercase;letter-spacing:.5px;margin-top:1px}
+
+  .st-badge{font-size:9.5px;font-weight:700;padding:2px 7px;border-radius:5px;letter-spacing:.6px;font-family:var(--mono)}
+  .st-Need-Pics{background:rgba(246,168,33,.16);color:var(--warm)}
+  .st-Marketing{background:rgba(53,212,138,.16);color:var(--money)}
+  .st-Assigned{background:rgba(78,159,255,.16);color:var(--accent)}
+  .st-Sold-Deals{background:rgba(53,212,138,.20);color:var(--money)}
+  .st-Closed{background:rgba(53,212,138,.10);color:var(--money-dim)}
+  .st-Cancel{background:rgba(255,107,107,.14);color:var(--cold)}
+  .status-sel{border:0;outline:0;font-family:var(--mono);font-weight:700;font-size:10px;letter-spacing:.5px;padding:3px 5px;border-radius:5px;cursor:pointer;max-width:130px}
+  .status-sel:hover{filter:brightness(1.12)}
+  .status-sel option{background:var(--panel);color:var(--text)}
+
+  .spread{display:flex;flex-direction:column;gap:5px}
+  .spread-bar{height:26px;border-radius:6px;background:var(--panel-2);position:relative;overflow:hidden;border:1px solid var(--line)}
+  .spread-fill{position:absolute;left:0;top:0;bottom:0;background:linear-gradient(90deg,var(--money-dim),var(--money));display:flex;align-items:center;padding-left:8px}
+  .spread-fill span{font-family:var(--mono);font-size:11px;font-weight:700;color:#04140c;white-space:nowrap}
+  .spread-meta{display:flex;justify-content:space-between;font-family:var(--mono);font-size:11px;color:var(--muted)}
+  .spread-meta b{color:var(--money);font-weight:700}
+
+  .facts{display:flex;flex-wrap:wrap;gap:6px}
+  .fact{background:var(--panel-2);border-radius:6px;padding:4px 8px;font-size:11px;color:var(--muted);font-family:var(--mono)}
+  .fact b{color:var(--text);font-weight:500}
+  .tag{font-size:10px;font-weight:600;padding:3px 8px;border-radius:5px;text-transform:uppercase;letter-spacing:.5px}
+  .tag.flip{background:rgba(246,168,33,.15);color:var(--warm)}
+  .tag.buy_hold{background:rgba(78,159,255,.15);color:var(--accent)}
+  .tag.wholesale{background:rgba(53,212,138,.15);color:var(--money)}
+
+  .d-foot{display:flex;justify-content:space-between;align-items:center;gap:8px;border-top:1px solid var(--line);padding-top:11px;margin-top:auto}
+  .stage-pill{font-size:11px;font-family:var(--mono);color:var(--muted);display:flex;align-items:center;gap:6px}
+  .stage-dot{width:7px;height:7px;border-radius:50%;background:var(--faint)}
+  .foot-btns{display:flex;gap:6px}
+  .btn{background:var(--accent);color:#031225;border:0;border-radius:8px;padding:8px 13px;font-size:12.5px;font-weight:600;transition:.15s}
+  .btn:hover{filter:brightness(1.1)}
+  .btn.ghost{background:none;border:1px solid var(--line);color:var(--muted)}
+  .btn.ghost:hover{color:var(--text);border-color:var(--faint)}
+  .btn.danger{background:none;border:1px solid rgba(255,107,107,.4);color:var(--cold)}
+  .btn.sm{padding:6px 10px;font-size:11.5px}
+
+  .brk{display:flex;flex-direction:column;gap:6px;font-size:11.5px}
+  .brk-row{display:flex;align-items:center;gap:8px}
+  .brk-row .lbl{width:96px;color:var(--muted);font-family:var(--mono);flex:0 0 96px}
+  .brk-track{flex:1;height:6px;background:var(--panel-2);border-radius:3px;overflow:hidden}
+  .brk-fill{height:100%;background:var(--money);border-radius:3px}
+  .brk-row .v{font-family:var(--mono);color:var(--text);width:30px;text-align:right}
+
+  .empty{background:var(--panel);border:1px dashed var(--line);border-radius:var(--r);padding:48px 28px;text-align:center}
+  .empty h3{font-family:var(--disp);font-size:20px;margin:0 0 8px}
+  .empty p{color:var(--muted);margin:0 auto 20px;max-width:440px;font-size:13.5px;line-height:1.55}
+  .empty .btn{margin:0 4px}
+
+  .cascade-legend{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:18px;font-size:12px;color:var(--muted)}
+  .cascade-legend span{display:flex;align-items:center;gap:6px;font-family:var(--mono)}
+  .cascade-legend i{width:10px;height:10px;border-radius:3px}
+  .lane{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);margin-bottom:12px;overflow:hidden}
+  .lane-head{display:flex;align-items:center;gap:12px;padding:13px 16px;border-bottom:1px solid var(--line)}
+  .lane-head .step{font-family:var(--mono);font-size:12px;color:var(--faint);width:22px}
+  .lane-head .nm{font-family:var(--disp);font-weight:600;font-size:15px;display:flex;align-items:center;gap:9px}
+  .lane-head .nm i{width:11px;height:11px;border-radius:3px}
+  .lane-head .ct{margin-left:auto;font-family:var(--mono);font-size:12px;color:var(--muted);background:var(--panel-2);padding:3px 10px;border-radius:20px}
+  .lane-body{padding:10px 16px 14px;display:flex;flex-direction:column;gap:8px}
+  .lane-empty{color:var(--faint);font-size:12.5px;padding:6px 0;font-style:italic}
+  .row{display:flex;align-items:center;gap:12px;background:var(--panel-2);border-radius:9px;padding:10px 13px;flex-wrap:wrap}
+  .row .r-addr{font-weight:600;font-size:13.5px;flex:1;min-width:150px}
+  .row .r-addr small{display:block;color:var(--muted);font-weight:400;font-size:11px;font-family:var(--mono);margin-top:2px}
+  .row .r-prob{font-family:var(--mono);font-size:12px;font-weight:700;padding:3px 8px;border-radius:5px}
+  .row .r-when{font-family:var(--mono);font-size:11px;color:var(--faint);min-width:86px}
+  .row .r-act{display:flex;gap:6px}
+  .prob-hot{background:rgba(53,212,138,.15);color:var(--money)}
+  .prob-warm{background:rgba(246,168,33,.15);color:var(--warm)}
+  .prob-cold{background:rgba(255,107,107,.15);color:var(--cold)}
+
+  .mkt-wrap{display:grid;grid-template-columns:280px 1fr;gap:16px}
+  .mkt-list{display:flex;flex-direction:column;gap:6px;max-height:70vh;overflow:auto;padding-right:4px}
+  .mkt-item{background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:11px 13px;text-align:left;color:var(--text);transition:.12s}
+  .mkt-item:hover{border-color:var(--faint)}
+  .mkt-item.on{border-color:var(--accent);background:var(--panel-2)}
+  .mkt-item .a{font-weight:600;font-size:13px}
+  .mkt-item .b{font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:3px}
+  .sheet{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:22px}
+  .sheet h2{font-family:var(--disp);margin:0 0 3px;font-size:22px}
+  .sheet .loc{color:var(--muted);font-family:var(--mono);font-size:13px;margin-bottom:18px}
+  .headline{font-family:var(--disp);font-size:19px;font-weight:600;color:var(--money);line-height:1.3;margin-bottom:14px}
+  .num-strip{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px}
+  .num-strip .n{background:var(--panel-2);border-radius:9px;padding:10px 14px;flex:1;min-width:90px}
+  .num-strip .n b{font-family:var(--mono);font-size:17px;display:block}
+  .num-strip .n s{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;text-decoration:none}
+  .copybox{background:var(--ink);border:1px solid var(--line);border-radius:10px;padding:15px;font-size:13.5px;line-height:1.6;white-space:pre-wrap;color:var(--text)}
+  .copy-actions{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+  .mkt-tabs{display:flex;gap:6px;margin-bottom:16px;border-bottom:1px solid var(--line);padding-bottom:0}
+  .mkt-tab{background:none;border:0;border-bottom:2px solid transparent;color:var(--muted);padding:8px 4px;margin-bottom:-1px;font-size:13px;font-weight:600}
+  .mkt-tab:hover{color:var(--text)}
+  .mkt-tab.on{color:var(--text);border-bottom-color:var(--money)}
+  .detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .detail-grid .field{margin-bottom:0}
+  .detail-grid .field.wide{grid-column:1/-1}
+  .detail-grid input,.detail-grid textarea{width:100%;background:var(--ink);border:1px solid var(--line);border-radius:8px;padding:9px 11px;color:var(--text);font-size:13px}
+  .detail-grid textarea{min-height:64px;resize:vertical;font-family:inherit;line-height:1.4}
+  .brochure-frame{width:100%;border:0;border-radius:10px;background:#eef1f4;min-height:640px;display:block}
+
+  .buyer-intro{background:var(--panel);border:1px dashed var(--line);border-radius:var(--r);padding:18px;margin-bottom:18px;display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+  .buyer-intro p{margin:0;color:var(--muted);font-size:13px;flex:1;min-width:240px;line-height:1.5}
+  .buyer-intro b{color:var(--text)}
+  .match-head{display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:wrap}
+  .buyer{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:13px 15px;display:flex;align-items:center;gap:14px;margin-bottom:8px}
+  .fit{width:46px;height:46px;flex:0 0 46px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-weight:700;font-size:15px}
+  .buyer .bmain{flex:1;min-width:0}
+  .buyer .bname{font-weight:600;font-size:14px;display:flex;align-items:center;gap:8px}
+  .buyer .bwhy{color:var(--muted);font-size:11.5px;margin-top:3px;font-family:var(--mono)}
+  .btier{font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px;text-transform:uppercase;letter-spacing:.5px}
+  .btier.vip{background:rgba(199,146,255,.18);color:var(--vip)}
+  .btier.std{background:var(--panel-2);color:var(--muted)}
+
+  .modal-bg{position:fixed;inset:0;background:rgba(6,10,15,.72);display:flex;align-items:center;justify-content:center;padding:20px;z-index:50}
+  .modal{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:22px;width:100%;max-width:460px;max-height:90vh;overflow:auto}
+  .modal h3{font-family:var(--disp);margin:0 0 16px}
+  .field{margin-bottom:12px}
+  .field label{display:block;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:5px}
+  .field input,.field select{width:100%;background:var(--ink);border:1px solid var(--line);border-radius:8px;padding:9px 11px;color:var(--text);font-size:13px}
+  .field.chk{display:flex;align-items:center;gap:9px}
+  .fielderr{color:var(--cold);font-size:11px;margin-top:5px;line-height:1.35}
+  .field.chk input{width:auto} .field.chk label{margin:0;text-transform:none;letter-spacing:0;font-size:13px;color:var(--text)}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+  .toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--money);color:#04140c;padding:11px 20px;border-radius:10px;font-weight:600;font-size:13px;opacity:0;transition:.25s;z-index:60;pointer-events:none}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+  /* projected-profit stat */
+  .pstat{flex:0 0 auto;display:flex;flex-direction:column;align-items:flex-end;padding-top:2px}
+  .pstat b{font-family:var(--mono);font-size:18px;font-weight:700;color:var(--money);line-height:1}
+  .pstat s{font-size:8.5px;color:var(--muted);text-decoration:none;text-transform:uppercase;letter-spacing:.5px;margin-top:3px}
+  /* rating stars */
+  .stars{display:inline-flex;gap:2px;margin-top:7px}
+  .stars .star{cursor:pointer;font-size:14px;line-height:1;color:var(--faint);transition:.12s}
+  .stars .star:hover{transform:scale(1.15)}
+  .stars .star.on{color:var(--warm)}
+
+  /* blast flow (cascade) */
+  .flow{display:flex;align-items:flex-start;justify-content:center}
+  .fnode{display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;flex:0 0 auto;width:42px;text-align:center}
+  .fdot{width:26px;height:26px;border-radius:50%;border:2px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:11px;font-family:var(--mono);color:var(--faint);background:var(--panel-2);transition:.15s}
+  .fnode:hover .fdot{border-color:var(--c)}
+  .fnode.done .fdot{border-color:var(--c);background:var(--c);color:#04140c;font-weight:700}
+  .fnode.next .fdot{border-color:var(--c);box-shadow:0 0 0 3px color-mix(in srgb,var(--c) 22%,transparent)}
+  .fnode.locked{opacity:.38;cursor:not-allowed}
+  .fnode.locked:hover .fdot{border-color:var(--line)}
+  .flabel{font-size:10px;color:var(--muted);font-family:var(--mono)}
+  .fnode.done .flabel{color:var(--text)}
+  .fbar{flex:1;height:2px;background:var(--line);margin-top:13px;min-width:4px}
+  .fbar.done{background:var(--money)}
+  .prog{display:flex;align-items:center;gap:9px;width:100%}
+  .prog-track{flex:1;height:6px;background:var(--panel-2);border-radius:3px;overflow:hidden;min-width:0}
+  .prog-fill{height:100%;background:linear-gradient(90deg,var(--money-dim),var(--money));border-radius:3px;transition:.2s}
+  .prog-pct{font-family:var(--mono);font-size:13px;color:var(--money);font-weight:700;min-width:34px;text-align:right}
+
+  /* mini flow (deal card footer) */
+  .mini-flow{display:flex;gap:5px;align-items:center}
+  .mdot{width:11px;height:11px;border-radius:50%;background:var(--panel-2);border:1px solid var(--line);cursor:pointer;transition:.12s}
+  .mdot:hover{transform:scale(1.2)}
+  .mdot.next{border-color:var(--accent)}
+  .mdot.locked{opacity:.35;cursor:not-allowed}
+  .mdot.locked:hover{transform:none}
+  .mpct{font-family:var(--mono);font-size:11px;color:var(--muted);margin-left:3px}
+
+  /* cascade grid + card */
+  .cgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px}
+  .cdeal{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:13px 14px;display:flex;flex-direction:column}
+  .cdeal-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+  .cdeal-id{display:flex;flex-direction:column;gap:6px;min-width:0}
+  .cdeal-addr{font-family:var(--disp);font-weight:600;font-size:14px;display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+  .cdeal-sub{color:var(--muted);font-size:11px;font-family:var(--mono);margin-top:3px}
+  .cdeal-prob{font-family:var(--mono);font-size:16px;font-weight:700;display:flex;flex-direction:column;align-items:flex-end;line-height:1;flex:0 0 auto}
+  .cdeal-prob s{font-size:8px;color:var(--muted);text-decoration:none;text-transform:uppercase;letter-spacing:.5px;margin-top:3px}
+  .cdeal-flow{display:flex;flex-direction:column;align-items:stretch;gap:10px;margin-top:auto;padding-top:14px}
+  .cstats{margin-top:7px;font-family:var(--mono);font-size:10.5px;color:var(--faint)}
+  /* deal stats modal */
+  .stat-rows{display:flex;flex-direction:column;gap:8px;margin-top:4px}
+  .stat-row{display:flex;justify-content:space-between;align-items:center;background:var(--panel-2);border-radius:9px;padding:10px 13px}
+  .stat-label{font-size:13px;font-weight:500}
+  .stat-ctl{display:flex;align-items:center;gap:12px}
+  .stepper{width:30px;height:30px;border-radius:8px;border:1px solid var(--line);background:var(--ink);color:var(--text);font-size:17px;line-height:1;display:flex;align-items:center;justify-content:center}
+  .stepper:hover{border-color:var(--accent);color:var(--accent)}
+  .stat-val{font-family:var(--mono);font-size:17px;font-weight:700;min-width:22px;text-align:center}
+  .fb-add{display:flex;gap:8px;margin-bottom:10px}
+  .fb-add input{flex:1;background:var(--ink);border:1px solid var(--line);border-radius:8px;padding:9px 11px;color:var(--text);font-size:13px}
+  .fb-list{display:flex;flex-direction:column;gap:6px;max-height:220px;overflow:auto}
+  .fb-item{display:flex;gap:10px;align-items:flex-start;background:var(--panel-2);border-radius:8px;padding:9px 11px}
+  .fb-txt{flex:1;font-size:13px;line-height:1.4}
+  .fb-d{font-family:var(--mono);font-size:10px;color:var(--faint);margin-top:3px}
+  .fb-x{background:none;border:0;color:var(--faint);font-size:13px;cursor:pointer;padding:2px 4px}
+  .fb-x:hover{color:var(--cold)}
+  .fb-empty{color:var(--faint);font-size:12.5px;font-style:italic;padding:4px 0}
+
+  @media (max-width:860px){
+    .cdeal-flow{gap:12px} .fnode{width:48px}
+    body{flex-direction:column}
+    .rail{width:100%;flex:none;height:auto;position:static;flex-direction:row;flex-wrap:wrap;align-items:center;gap:4px;padding:12px}
+    .brand{padding:0 12px 0 4px} .rail-foot,.rail-add{display:none} .nav{flex-direction:row;flex-wrap:wrap;flex:1}
+    .nav button{padding:8px 11px} .main{padding:18px 16px 60px}
+    .mkt-wrap{grid-template-columns:1fr} .mkt-list{max-height:none;flex-direction:row;overflow-x:auto}
+    .mkt-item{min-width:200px} .row3{grid-template-columns:1fr 1fr}
+  }
+  @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+  :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+</style>
+</head>
+<body>
+
+<nav class="rail">
+  <div class="brand"><b>Dispo Desk</b><span>1HR</span></div>
+  <div class="nav" id="nav">
+    <button data-v="cascade" class="on"><i class="ico"></i>Blast Snapshot</button>
+    <button data-v="deals"><i class="ico"></i>Deal Insights</button>
+    <button data-v="buyers"><i class="ico"></i>VIP Buyer Match</button>
+    <button data-v="marketing"><i class="ico"></i>Marketing Prep</button>
+  </div>
+  <button class="rail-add" id="railAdd">+ Add deal</button>
+  <button class="rail-add" id="syncBtn" style="margin-top:8px;opacity:.92">&#10227; Sync tracker</button>
+  <div class="rail-foot">
+    Auto-pulls PICS &amp; MARKET deals<br>from the Deal Tracker every 5 min
+    <br><button id="reset">Reset all data</button>
+  </div>
+</nav>
+
+<main class="main">
+  <div class="head">
+    <div>
+      <h1 id="vTitle">Blast Snapshot</h1>
+      <p id="vSub">How far each active deal has moved through the blast order.</p>
+    </div>
+    <div class="kpis" id="kpis"></div>
+  </div>
+
+  <section class="view" id="view-cascade"><div id="cascadeBody"></div></section>
+  <section class="view" id="view-deals" hidden>
+    <div class="toolbar" id="dealTools"></div>
+    <div id="dealGrid"></div>
+  </section>
+  <section class="view" id="view-marketing" hidden><div id="mktBody"></div></section>
+  <section class="view" id="view-buyers" hidden>
+    <div class="buyer-intro">
+      <p><b>Add your VIP cash buyers below</b> and the desk ranks them against any deal by the ZIP codes they buy in. The three shown are examples; delete them once yours are in.</p>
+      <button class="btn" id="addBuyer">+ Add buyer</button>
+    </div>
+    <div class="match-head" id="matchHead"></div>
+    <div id="buyerList"></div>
+  </section>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+//=================== CONFIG ===================
+const STAGES=[
+ {key:"vip",   name:"VIP",         short:"VIP",v:"--vip"},
+ {key:"ibase", name:"Investorbase",short:"IB", v:"--ibase"},
+ {key:"agents",name:"Agents",      short:"Agt",v:"--agents"},
+ {key:"fb",    name:"Facebook",    short:"FB", v:"--fb"},
+];
+const STATUSES=["Need Pics","Marketing","Assigned","Sold Deals","Closed","Cancel"];
+const DEAD_STATES=["Sold Deals","Closed","Cancel"];
+
+//=================== DEAL ECONOMICS ===================
+const FALLOUT_RATE=0.40;   // % of deals expected to fall out (set flat)
+const PROFIT_FACTOR=0.40;  // projected profit = 40% of spread
+function num(v){return (v==null||v==="")?null:+v;}
+function model(d){
+  const uc=num(d.uc), mkt=num(d.mkt);
+  if(uc==null||mkt==null||mkt<=0)
+    return {needs:true,uc,mkt,spread:0,spct:0,proj:0,strat:"—"};
+  const spread=mkt-uc, spct=mkt?spread/mkt:0, proj=spread*PROFIT_FACTOR;
+  let strat="wholesale";
+  if(d.cond==="heavy")strat="flip";
+  else if(d.occ==="tenant")strat="buy_hold";
+  else if(spct>0.22)strat="flip";
+  return {needs:false,uc,mkt,spread,spct,proj,strat};
+}
+function rbucket(d){const r=d.rating||0;return r>=4?"hot":r>=3?"warm":r>=1?"cold":"";}
+
+//=================== SEED DEALS (from your tracker) ===================
+const D0={seller:"",ph:"",em:"",mv:null,uc:null,mkt:null,bd:"",ba:"",sf:"",cond:"light",occ:"",days:30,fc:false,rating:0,note:""};
+const SEED_DEALS=[
+ {...D0,id:"s1",addr:"68-1780 Niu Haohao Pl",city:"Waikoloa Village",st:"HI",zip:"96738",status:"Need Pics"},
+ {...D0,id:"s2",addr:"1472 Little Ave",city:"Columbus",st:"OH",zip:"43223",status:"Need Pics"},
+ {...D0,id:"s3",addr:"1241 S 16th Street",city:"Louisville",st:"KY",zip:"40210",status:"Need Pics"},
+ {...D0,id:"s4",addr:"12225 Triskett Rd",city:"Cleveland",st:"OH",zip:"44111",status:"Need Pics"},
+ {...D0,id:"s5",addr:"37454 Euclid Ave",city:"Willoughby",st:"OH",zip:"44094",status:"Need Pics"},
+ {...D0,id:"s6",addr:"3707 Library Ave",city:"Cleveland",st:"OH",zip:"44109",status:"Marketing"},
+ {...D0,id:"s7",addr:"705 Fairlawn Ave",city:"Elyria",st:"OH",zip:"44035",status:"Marketing"},
+ {...D0,id:"s8",addr:"1374 E 91st St",city:"Cleveland",st:"OH",zip:"44106",status:"Need Pics"},
+];
+const SAMPLE_BUYERS=[
+ {id:"bx1",llc:"Meridian Capital REI",name:"Dave Kohl",phone:"(216) 555-0142",email:"dave@meridianrei.com",zips:["44109","44111","44106","45211"],tier:"vip",note:"example"},
+ {id:"bx2",llc:"Lakeside Holdings",name:"Priya Nadella",phone:"(440) 555-0199",email:"buys@lakesideholdings.com",zips:["44102","44113","44035","44094"],tier:"vip",note:"example"},
+ {id:"bx3",llc:"Buckeye Turnkey LLC",name:"Marcus Reed",phone:"(614) 555-0177",email:"marcus@buckeyeturnkey.com",zips:["43205","43123","43223","45344"],tier:"vip",note:"example"},
+];
+
+//=================== TRACKER SYNC CONFIG ===================
+const TRACKER_API="https://script.google.com/macros/s/AKfycbw5IMD8ULM4pnBrUnhjLadeYIwP0yRNk8iWuap0BiFsDDSmx-9FsiqdbLDzQGob6nTW/exec";
+const TRACKER_TOKEN="oho-2026-x7";
+const SYNC_MINUTES=5;                       // auto-check interval
+const TRACKER_STATUS_MAP={"PICS":"Need Pics","NEED PICS":"Need Pics","MARKET":"Marketing","MARKETING":"Marketing"};
+// Section routing (matched by substring, case-insensitive):
+const SEC_ACTIVE="NEED TO BE SOLD";                    // -> active board
+const SEC_SOLD=["SET TO CLOSE","LEGAL"];               // -> archived as "Sold Deals"
+                                                        // anything else -> "Cancel"
+
+//=================== STORAGE SHIM (GitHub Pages fallback) ===================
+if(!window.storage){
+  window.storage={
+    async get(k){const v=localStorage.getItem("dispo:"+k);return v==null?null:{key:k,value:v};},
+    async set(k,v){localStorage.setItem("dispo:"+k,v);return{key:k,value:v};},
+    async delete(k){localStorage.removeItem("dispo:"+k);return{key:k,deleted:true};}
+  };
+}
+
+//=================== STATE ===================
+let ST={deals:[],blast:{},buyers:null};
+async function load(){
+  let hasSaved=false;
+  try{const d=await window.storage.get("deals");if(d){ST.deals=JSON.parse(d.value);hasSaved=true;}}catch(e){}
+  if(!hasSaved)ST.deals=SEED_DEALS.map(d=>({...d}));  // first run: load tracker deals
+  const MIG={PICS:"Need Pics",MARKET:"Marketing",PENDING:"Assigned",CLOSED:"Closed",DEAD:"Cancel"};
+  ST.deals.forEach(d=>{if(MIG[d.status])d.status=MIG[d.status];
+    if(d.uc==null&&d.ask!=null)d.uc=d.ask;  // old contract price -> UC price
+    if(!d.src&&/^[st]/.test(String(d.id)))d.src="tracker";});  // seeds + prior syncs are tracker-sourced
+  try{const b=await window.storage.get("blast");if(b)ST.blast=JSON.parse(b.value);}catch(e){}
+  try{const b=await window.storage.get("buyers");ST.buyers=b?JSON.parse(b.value):SAMPLE_BUYERS.slice();}catch(e){ST.buyers=SAMPLE_BUYERS.slice();}
+  if(!ST.buyers)ST.buyers=SAMPLE_BUYERS.slice();
+}
+async function save(k){try{await window.storage.set(k,JSON.stringify(ST[k]));}catch(e){}}
+
+//=================== DERIVED ===================
+let DEALS=[];
+function rebuild(){DEALS=ST.deals.map(d=>({...d,m:model(d)}));}
+const byId=id=>DEALS.find(d=>d.id===id);
+const isDone=(id,key)=>!!(ST.blast[id]&&ST.blast[id][key]);
+const doneCount=id=>STAGES.filter(s=>isDone(id,s.key)).length;
+const progress=id=>doneCount(id)/STAGES.length;
+const anyBlast=id=>doneCount(id)>0;
+const isLive=d=>!DEAD_STATES.includes(d.status);
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const money=n=>"$"+Math.round(n).toLocaleString();
+const kfmt=n=>n>=1000?"$"+(n/1000).toFixed(n<10000?1:0)+"k":"$"+n;
+function esc(s){return String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
+const stCls=s=>"st-"+String(s).replace(/\s+/g,"-");
+
+//=================== KPIs ===================
+function renderKpis(){
+  const live=DEALS.filter(isLive);
+  const scored=live.filter(d=>!d.m.needs);
+  const avgBlast=live.length?Math.round(live.reduce((a,d)=>a+progress(d.id),0)/live.length*100):0;
+  const mkt=DEALS.filter(d=>d.status==="Marketing").length;
+  const totalSpread=scored.reduce((a,d)=>a+d.m.spread,0);
+  const projProfit=totalSpread*PROFIT_FACTOR;
+  $("#kpis").innerHTML=[[live.length,"Active"],[mkt,"Marketing"],[avgBlast+"%","Avg blast"],
+    [scored.length?kfmt(totalSpread):"—","Total spread"],
+    [Math.round(FALLOUT_RATE*100)+"%","Fallout rate"],
+    [scored.length?kfmt(projProfit):"—","Proj profit"]]
+    .map(([n,l])=>`<div class="kpi"><div class="n">${n}</div><div class="l">${l}</div></div>`).join("");
+}
+
+//=================== DEAL BOARD ===================
+let dealFilter="all",dealSort="rating";
+function pstat(m){
+  return `<div class="pstat"><b>${kfmt(m.proj)}</b><s>proj profit</s></div>`;
+}
+function dealCard(d){
+  const m=d.m;
+  if(m.needs){
+    return `<div class="deal" style="--edge:var(--warm)">
+      <div class="d-top"><div><div class="d-addr">${esc(d.addr)}</div>
+        <div class="d-sub"><span class="st-badge ${stCls(d.status)}">${d.status}</span>${esc(d.city)}, ${d.st} ${d.zip}</div>
+        ${stars(d)}</div></div>
+      <div style="background:var(--panel-2);border-radius:9px;padding:14px;text-align:center;color:var(--muted);font-size:12.5px">
+        Add UC price &amp; marketed price to see the spread</div>
+      <div class="d-foot"><div class="foot-btns"><button class="btn sm" onclick="editDeal('${d.id}')">Add numbers</button><button class="btn ghost sm" onclick="openStats('${d.id}')">Stats</button></div>${miniFlow(d)}</div>
+    </div>`;
+  }
+  const pctW=Math.max(8,Math.min(100,m.spct*100*3));
+  return `<div class="deal ${rbucket(d)}">
+    <div class="d-top">
+      <div><div class="d-addr">${esc(d.addr)}</div>
+        <div class="d-sub"><span class="st-badge ${stCls(d.status)}">${d.status}</span>${esc(d.city)}, ${d.st} ${d.zip}</div>
+        ${stars(d)}</div>
+      ${pstat(m)}
+    </div>
+    <div class="spread">
+      <div class="spread-bar"><div class="spread-fill" style="width:${pctW}%"><span>${kfmt(m.spread)} spread</span></div></div>
+      <div class="spread-meta"><span>UC ${kfmt(m.uc)}</span><span>Marketed <b>${kfmt(m.mkt)}</b> · ${(m.spct*100).toFixed(0)}%</span></div>
+    </div>
+    <div class="facts">
+      <span class="tag ${m.strat}">${m.strat.replace("_","-")}</span>
+      ${d.mv?`<span class="fact">ARV ${kfmt(d.mv)}</span>`:""}
+      <span class="fact"><b>${d.bd||"?"}</b>bd/<b>${d.ba||"?"}</b>ba</span>
+      ${d.sf?`<span class="fact"><b>${(+d.sf).toLocaleString()}</b> sf</span>`:""}
+      ${d.occ?`<span class="fact">${d.occ}</span>`:""}
+      ${d.fc?'<span class="fact">free & clear</span>':''}
+    </div>
+    <div class="d-foot">
+      <div class="foot-btns"><button class="btn ghost sm" onclick="editDeal('${d.id}')">Edit</button><button class="btn ghost sm" onclick="openStats('${d.id}')">Stats</button></div>
+      ${miniFlow(d)}
+    </div>
+  </div>`;
+}
+function renderDeals(){
+  const tools=$("#dealTools");
+  if(!DEALS.length){tools.innerHTML="";$("#dealGrid").innerHTML=emptyState();return;}
+  const present=[...new Set(DEALS.map(d=>d.status))];
+  const chips=["all",...STATUSES.filter(s=>present.includes(s))];
+  tools.innerHTML=chips.map(c=>`<button class="chip ${dealFilter===c?'on':''}" data-f="${c}">${c==="all"?"All":c}</button>`).join("")+
+    `<span class="grow"></span>
+     <select class="search" id="sortBy">
+       <option value="rating">Sort: Deal rating</option>
+       <option value="proj">Sort: Projected profit</option>
+       <option value="spread">Sort: Spread $</option>
+       <option value="blast">Sort: Blast progress</option>
+       <option value="mkt">Sort: Marketed price</option></select>`;
+  tools.querySelectorAll(".chip").forEach(c=>c.onclick=()=>{dealFilter=c.dataset.f;renderDeals();});
+  const sb=tools.querySelector("#sortBy");sb.value=dealSort;sb.onchange=e=>{dealSort=e.target.value;renderDeals();};
+  let list=DEALS.filter(d=>dealFilter==="all"||d.status===dealFilter);
+  const mkv=d=>d.m.mkt||1e12;
+  const S={rating:(a,b)=>(b.rating||0)-(a.rating||0)||b.m.proj-a.m.proj,proj:(a,b)=>b.m.proj-a.m.proj,
+    spread:(a,b)=>b.m.spread-a.m.spread,blast:(a,b)=>progress(b.id)-progress(a.id),mkt:(a,b)=>mkv(a)-mkv(b)};
+  list.sort(S[dealSort]);
+  $("#dealGrid").innerHTML=`<div class="grid">${list.map(dealCard).join("")}</div>`;
+}
+function emptyState(){
+  return `<div class="empty"><h3>No deals yet</h3>
+    <p>Add the deals from your tracker — the ones marked <b>Marketing</b>, <b>Need Pics</b>, or whatever stage they're at. Enter the UC and marketed price and each shows its spread, projected profit, and blast flow.</p>
+    <button class="btn" onclick="addDeal()">+ Add your first deal</button>
+    <button class="btn ghost" onclick="loadSamples()">Load 5 samples to explore</button></div>`;
+}
+
+//=================== CASCADE ===================
+function toggleBlast(id,key){
+  const idx=STAGES.findIndex(s=>s.key===key), done=doneCount(id);
+  const b=ST.blast[id]||(ST.blast[id]={});
+  if(isDone(id,key)){
+    for(let i=idx;i<STAGES.length;i++)delete b[STAGES[i].key];   // clear this + everything after
+  }else{
+    if(idx>done){toast(`Blast ${STAGES[done].name} first`);return;}
+    b[key]=Date.now();
+  }
+  if(!Object.keys(b).length)delete ST.blast[id];
+  save("blast");render();
+}
+function setRating(id,n){const d=ST.deals.find(x=>x.id===id);if(!d)return;d.rating=(d.rating===n?0:n);save("deals");render();}
+function setStatus(id,val){const d=ST.deals.find(x=>x.id===id);if(!d)return;d.status=val;save("deals");render();}
+function statusSelect(d){
+  return `<select class="status-sel ${stCls(d.status)}" title="Change status" onchange="setStatus('${d.id}',this.value)">${STATUSES.map(s=>`<option value="${s}" ${s===d.status?"selected":""}>${s}</option>`).join("")}</select>`;
+}
+function dealStats(d){if(!d.stats||typeof d.stats!=="object")d.stats={walk:0,offers:0,feedback:[]};if(!Array.isArray(d.stats.feedback))d.stats.feedback=[];return d.stats;}
+function statsSummary(d){
+  const s=d.stats;if(!s)return"";
+  const w=s.walk||0,o=s.offers||0,f=(s.feedback||[]).length,parts=[];
+  if(w)parts.push(w+" walkthrough"+(w>1?"s":""));if(o)parts.push(o+" offer"+(o>1?"s":""));if(f)parts.push(f+" note"+(f>1?"s":""));
+  return parts.length?`<div class="cstats">${parts.join(" · ")}</div>`:"";
+}
+function counter(label,key,val){
+  return `<div class="stat-row"><span class="stat-label">${label}</span>
+    <div class="stat-ctl"><button class="stepper" data-k="${key}" data-inc="-1">−</button>
+    <span class="stat-val">${val||0}</span>
+    <button class="stepper" data-k="${key}" data-inc="1">+</button></div></div>`;
+}
+function openStats(id){
+  const body=()=>{const d=ST.deals.find(x=>x.id===id),s=dealStats(d);
+    return `<h3>Deal stats — ${esc(d.addr)}</h3>
+      <div class="stat-rows">
+        ${counter("Walkthroughs","walk",s.walk)}
+        ${counter("Offers received","offers",s.offers)}
+      </div>
+      <div class="field" style="margin-top:16px"><label>Buyer feedback</label>
+        <div class="fb-add"><input id="fb_in" placeholder="e.g. too much rehab for the price"><button class="btn sm" id="fb_add">Add</button></div>
+        <div class="fb-list">${s.feedback.length?s.feedback.map((f,i)=>`<div class="fb-item"><div class="fb-txt"><div>${esc(f.text)}</div><div class="fb-d">${new Date(f.at).toLocaleDateString()}</div></div><button class="fb-x" data-i="${i}" title="Remove">✕</button></div>`).join(""):'<div class="fb-empty">No feedback logged yet.</div>'}</div>
+      </div>
+      <div class="copy-actions" style="margin-top:18px"><button class="btn" data-close>Done</button></div>`;};
+  const w=modal(body());
+  const bg=w.parentElement;
+  bg.addEventListener("click",e=>{if(e.target===bg||e.target.hasAttribute("data-close"))render();});
+  const wire=()=>{
+    w.querySelectorAll(".stepper").forEach(b=>b.onclick=()=>{const d=ST.deals.find(x=>x.id===id),s=dealStats(d);s[b.dataset.k]=Math.max(0,(s[b.dataset.k]||0)+(+b.dataset.inc));save("deals");w.innerHTML=body();wire();});
+    const add=w.querySelector("#fb_add"),inp=w.querySelector("#fb_in");
+    if(add)add.onclick=()=>{const v=inp.value.trim();if(!v)return;const d=ST.deals.find(x=>x.id===id),s=dealStats(d);s.feedback.unshift({text:v,at:Date.now()});save("deals");w.innerHTML=body();wire();};
+    if(inp)inp.onkeydown=e=>{if(e.key==="Enter"){e.preventDefault();add.click();}};
+    w.querySelectorAll(".fb-x").forEach(b=>b.onclick=()=>{const d=ST.deals.find(x=>x.id===id),s=dealStats(d);s.feedback.splice(+b.dataset.i,1);save("deals");w.innerHTML=body();wire();});
+  };
+  wire();
+}
+function stars(d,size){const s=size||"";return `<div class="stars ${s}" title="Deal rating">${[1,2,3,4,5].map(n=>`<span class="star ${(d.rating||0)>=n?'on':''}" onclick="event.stopPropagation();setRating('${d.id}',${n})">★</span>`).join("")}</div>`;}
+function blastFlow(d){
+  const done=doneCount(d.id);
+  let h='<div class="flow">';
+  STAGES.forEach((s,i)=>{
+    if(i>0)h+=`<div class="fbar ${i<done?'done':''}"></div>`;
+    const isD=i<done, isNext=i===done, cls=isD?'done':isNext?'next':'locked';
+    const tip=isD?' · blasted '+ago(ST.blast[d.id][s.key]):isNext?' · blast next':' · locked';
+    h+=`<div class="fnode ${cls}" style="--c:var(${s.v})" onclick="toggleBlast('${d.id}','${s.key}')" title="${s.name}${tip}">
+      <div class="fdot">${isD?'✓':i+1}</div><div class="flabel">${s.short}</div></div>`;
+  });
+  return h+'</div>';
+}
+function progBar(id){const p=Math.round(progress(id)*100);return `<div class="prog"><div class="prog-track"><div class="prog-fill" style="width:${p}%"></div></div><span class="prog-pct">${p}%</span></div>`;}
+function miniFlow(d){
+  const done=doneCount(d.id);
+  return `<div class="mini-flow">${STAGES.map((s,i)=>{
+    const isD=i<done,cls=isD?'on':i===done?'next':'locked';
+    return `<span class="mdot ${cls}" style="${isD?`background:var(${s.v});border-color:transparent;`:''}" title="${s.name}" onclick="toggleBlast('${d.id}','${s.key}')"></span>`;
+  }).join("")}<span class="mpct">${Math.round(progress(d.id)*100)}%</span></div>`;
+}
+function ago(t){if(!t)return"";const m=(Date.now()-t)/6e4;if(m<1)return"just now";if(m<60)return Math.floor(m)+"m ago";const h=m/60;if(h<24)return Math.floor(h)+"h ago";return Math.floor(h/24)+"d ago";}
+function renderCascade(){
+  const body=$("#cascadeBody");
+  const live=DEALS.filter(isLive);
+  if(!live.length){body.innerHTML=`<div class="empty"><h3>Nothing to blast yet</h3><p>Add deals and they line up here so you can walk each one through the blast flow — VIP first, then Investorbase, Agents, and Facebook.</p><button class="btn" onclick="addDeal()">+ Add deal</button></div>`;return;}
+  const list=live.slice().sort((a,b)=>(b.rating||0)-(a.rating||0)||progress(b.id)-progress(a.id)||b.m.proj-a.m.proj);
+  body.innerHTML=`<div class="cascade-legend">${STAGES.map((s,i)=>`<span><i style="background:var(${s.v})"></i>${i+1} ${s.name}</span>`).join("")}</div>`+
+    `<div class="cgrid">`+list.map(d=>{const m=d.m;
+      return `<div class="cdeal">
+        <div class="cdeal-head">
+          <div class="cdeal-id">${stars(d)}
+            <div><div class="cdeal-addr">${esc(d.addr)}</div>
+              <div class="cdeal-sub">${esc(d.city)} ${d.zip}${m.needs?'':' · '+kfmt(m.spread)+' spread'}</div>
+              <div style="margin-top:6px">${statusSelect(d)}</div>
+              ${statsSummary(d)}</div>
+          </div>
+          <button class="btn ghost sm" onclick="openStats('${d.id}')">Stats</button>
+        </div>
+        <div class="cdeal-flow">${blastFlow(d)}${progBar(d.id)}</div>
+      </div>`;
+    }).join("")+`</div>`;
+}
+
+//=================== MARKETING ===================
+let mktSel=null, mktTab="details";
+const condText=d=>d.cond==="heavy"?"Heavy rehab":d.cond==="medium"?"Cosmetic + updates":"Light / rent-ready";
+const priceLine=d=>d.m.mkt?money(d.m.mkt):"Call for price";
+function specLine(d){const s=[];if(d.bd)s.push(d.bd+" bed");if(d.ba)s.push(d.ba+" bath");if(d.sf)s.push((+d.sf).toLocaleString()+" sqft");if(d.lotSf)s.push((+d.lotSf).toLocaleString()+" sqft lot");return s.join(" · ");}
+function headline(d){
+  const m=d.m,hooks=[];
+  if(d.mv&&m.mkt&&m.mkt<d.mv)hooks.push("below ARV");
+  if(d.occ==="vacant")hooks.push("vacant & ready");if(d.fc)hooks.push("free & clear");if(+d.days<=30)hooks.push("quick close");
+  const lead=m.strat==="flip"?"Fix & flip":m.strat==="buy_hold"?"Turnkey rental":"Investor special";
+  return `${lead} in ${d.city} — ${hooks.slice(0,3).join(", ")||"cash buyer opportunity"}`;
+}
+function blastCopy(d){
+  const m=d.m,extras=[];
+  if(d.yearBuilt)extras.push("Built "+d.yearBuilt);
+  if(d.roofAge)extras.push("Roof: "+d.roofAge);
+  if(d.hvac)extras.push("HVAC/heat: "+d.hvac);
+  if(d.parking)extras.push("Parking: "+d.parking);
+  return `🏠 ${d.addr}, ${d.city}, ${d.st} ${d.zip}
+${specLine(d)||"Details on request"}${d.occ?` · ${d.occ}`:""}
+
+💰 Price: ${priceLine(d)}
+${d.mv?`📈 ARV / market: ${money(d.mv)}\n`:""}🔧 Condition: ${condText(d)}
+${extras.length?extras.join(" · ")+"\n":""}
+${d.mktDesc||d.note||""}${d.specs?` ${d.specs}.`:""}${d.fc?" Free & clear title.":""}
+Serious cash buyers only — proof of funds required. Reply "INFO" for the packet.`;
+}
+function brochureText(d){
+  const rows=[["Beds",d.bd],["Baths",d.ba],["Living area",d.sf?(+d.sf).toLocaleString()+" sqft":""],["Lot size",d.lotSf?(+d.lotSf).toLocaleString()+" sqft":""],
+    ["Year built",d.yearBuilt],["Roof",d.roofAge],["HVAC / heat",d.hvac],["Parking",d.parking],["Occupancy",d.occ],["Condition",condText(d)],["ARV / market",d.mv?money(d.mv):""]];
+  return `${d.addr}, ${d.city}, ${d.st} ${d.zip}\nPRICE: ${priceLine(d)}\n\n`+
+    rows.filter(r=>r[1]).map(r=>`${r[0]}: ${r[1]}`).join("\n")+
+    (d.specs?`\n\nMAJOR SPECS & UPDATES\n${d.specs}`:"")+
+    ((d.mktDesc||d.note)?`\n\nTHE OPPORTUNITY\n${d.mktDesc||d.note}`:"")+
+    `\n\nCash buyers only · proof of funds required. Reply "INFO" for the full packet.`;
+}
+const BROCHURE_CSS=`
+.br-doc{background:#fff;color:#1a1f26;max-width:720px;margin:0 auto;font-family:'Inter',system-ui,sans-serif;border-radius:10px;overflow:hidden}
+.br-head{display:flex;justify-content:space-between;align-items:center;background:#0E141C;color:#fff;padding:20px 26px}
+.br-brand{font-family:'Space Grotesk',sans-serif;font-weight:700;letter-spacing:1px;font-size:12px;color:#35D48A}
+.br-price{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:26px}
+.br-addr{padding:20px 26px 4px;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:24px;line-height:1.15}
+.br-addr span{display:block;font-family:'Inter';font-weight:500;font-size:14px;color:#5a6675;margin-top:3px}
+.br-tagline{padding:6px 26px 18px;color:#1c8a5a;font-weight:600;font-size:15px}
+.br-specs{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:#e7ebef;border-top:1px solid #e7ebef;border-bottom:1px solid #e7ebef}
+.br-spec{background:#fff;padding:12px 16px}
+.br-spec s{display:block;text-decoration:none;font-size:10px;text-transform:uppercase;letter-spacing:.6px;color:#8a97a6}
+.br-spec b{font-size:15px;font-weight:600}
+.br-sec{padding:16px 26px 4px}
+.br-sec h4{margin:0 0 5px;font-size:11px;text-transform:uppercase;letter-spacing:.7px;color:#8a97a6}
+.br-sec p{margin:0 0 12px;font-size:14px;line-height:1.5;white-space:pre-wrap}
+.br-cta{margin:14px 26px 26px;background:#f2f7f4;border:1px solid #d7e3db;border-radius:9px;padding:14px 16px;font-size:13px;line-height:1.5;color:#2a3a30}
+@media print{body{margin:0;background:#fff}.br-doc{max-width:none}}
+`;
+function specItem(label,val){return val?`<div class="br-spec"><s>${label}</s><b>${esc(String(val))}</b></div>`:"";}
+function brochureInner(d){
+  return `<div class="br-doc">
+    <div class="br-head"><div class="br-brand">1 HOUR OFFERS · DISPO</div><div class="br-price">${priceLine(d)}</div></div>
+    <div class="br-addr">${esc(d.addr)}<span>${esc(d.city)}, ${d.st} ${d.zip}</span></div>
+    <div class="br-tagline">${esc(headline(d))}</div>
+    <div class="br-specs">
+      ${specItem("Beds",d.bd)}${specItem("Baths",d.ba)}${specItem("Living area",d.sf?(+d.sf).toLocaleString()+" sqft":"")}
+      ${specItem("Lot size",d.lotSf?(+d.lotSf).toLocaleString()+" sqft":"")}${specItem("Year built",d.yearBuilt)}${specItem("Roof",d.roofAge)}
+      ${specItem("HVAC / heat",d.hvac)}${specItem("Parking",d.parking)}${specItem("Occupancy",d.occ)}
+      ${specItem("Condition",condText(d))}${d.mv?specItem("ARV / market",money(d.mv)):""}
+    </div>
+    ${d.specs?`<div class="br-sec"><h4>Major specs &amp; updates</h4><p>${esc(d.specs)}</p></div>`:""}
+    ${(d.mktDesc||d.note)?`<div class="br-sec"><h4>The opportunity</h4><p>${esc(d.mktDesc||d.note)}</p></div>`:""}
+    <div class="br-cta"><b>Cash buyers only · proof of funds required.</b><br>Contact the disposition desk to lock this up — reply "INFO" for the full packet, access, and assignment details.</div>
+  </div>`;
+}
+function printBrochure(id){
+  const dd=DEALS.find(x=>x.id===id);if(!dd)return;
+  const wdw=window.open("","_blank");if(!wdw){toast("Allow pop-ups to print");return;}
+  wdw.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${esc(dd.addr)}</title><link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet"><style>body{margin:24px;background:#eef1f4}${BROCHURE_CSS}</style></head><body>${brochureInner(dd)}</body></html>`);
+  wdw.document.close();wdw.focus();setTimeout(()=>wdw.print(),400);
+}
+function detailField(d,label,key,ph){
+  return `<div class="field"><label>${label}</label><input value="${esc(d[key]??"")}" oninput="setDetail('${d.id}','${key}',this.value)" placeholder="${ph||""}"></div>`;
+}
+function setDetail(id,key,val){const d=ST.deals.find(x=>x.id===id);if(!d)return;d[key]=val;save("deals");}
+function setMktTab(t){mktTab=t;renderMarketing();}
+function renderMarketing(){
+  rebuild();
+  const body=$("#mktBody");
+  if(!DEALS.length){body.innerHTML=`<div class="empty"><h3>No deals to market</h3><p>Add a deal, then build its details, text blast, and brochure here.</p><button class="btn" onclick="addDeal()">+ Add deal</button></div>`;return;}
+  if(!mktSel||!byId(mktSel))mktSel=DEALS[0].id;
+  body.innerHTML=`<div class="mkt-wrap"><div class="mkt-list" id="mktList"></div><div class="sheet" id="mktSheet"></div></div>`;
+  $("#mktList").innerHTML=DEALS.map(d=>
+    `<button class="mkt-item ${d.id===mktSel?'on':''}" onclick="setMkt('${d.id}')">
+      <div class="a">${esc(d.addr)}</div><div class="b">${esc(d.city)} · ${d.status}</div></button>`).join("");
+  const d=byId(mktSel),m=d.m;
+  const tabs=["details","blast","brochure"],tlabel={details:"Details",blast:"Text Blast",brochure:"Brochure"};
+  let tabHtml="";
+  if(mktTab==="details"){
+    tabHtml=`<div class="detail-grid">
+      ${detailField(d,"Beds","bd","3")}${detailField(d,"Baths","ba","2")}
+      ${detailField(d,"Living area (sqft)","sf","1200")}${detailField(d,"Lot size (sqft)","lotSf","6500")}
+      ${detailField(d,"Year built","yearBuilt","1962")}${detailField(d,"Roof age / condition","roofAge","5 yrs / good")}
+      ${detailField(d,"HVAC / heat","hvac","Forced air, newer")}${detailField(d,"Parking / garage","parking","2-car detached")}
+      <div class="field wide"><label>Major specs &amp; updates</label><textarea oninput="setDetail('${d.id}','specs',this.value)" placeholder="New windows 2022, updated electrical, solid foundation...">${esc(d.specs??"")}</textarea></div>
+      <div class="field wide"><label>Marketing description</label><textarea oninput="setDetail('${d.id}','mktDesc',this.value)" placeholder="Why this is a great buy for an investor...">${esc(d.mktDesc??"")}</textarea></div>
+    </div>
+    <div style="font-size:11.5px;color:var(--faint);margin-top:6px">Saved automatically — these feed the Text Blast and Brochure tabs.</div>`;
+  }else if(mktTab==="blast"){
+    tabHtml=`<div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px">Text blast — buyer-facing, ready to paste</div>
+      <div class="copybox">${esc(blastCopy(d))}</div>
+      <div class="copy-actions">
+        <button class="btn" onclick="copyCopy()">Copy blast text</button>
+        <button class="btn ghost" onclick="gotoBuyers('${d.id}')">Find buyers for this →</button>
+      </div>`;
+  }else{
+    tabHtml=`<iframe id="brFrame" class="brochure-frame" title="Brochure preview"></iframe>
+      <div class="copy-actions">
+        <button class="btn" onclick="printBrochure('${d.id}')">Print / Save as PDF</button>
+        <button class="btn ghost" onclick="copyBrochure()">Copy details text</button>
+      </div>`;
+  }
+  $("#mktSheet").innerHTML=`
+    <h2>${esc(d.addr)}</h2><div class="loc">${esc(d.city)}, ${d.st} ${d.zip}${d.seller?` · ${esc(d.seller)}`:""}${d.ph?` · ${esc(d.ph)}`:""}</div>
+    <div class="num-strip">
+      <div class="n"><b>${m.mkt?money(m.mkt):"—"}</b><s>Marketed</s></div>
+      <div class="n"><b>${m.uc?money(m.uc):"—"}</b><s>UC price</s></div>
+      <div class="n" style="color:var(--money)"><b>${m.needs?"—":money(m.spread)}</b><s>Spread</s></div>
+      <div class="n" style="color:var(--money)"><b>${m.needs?"—":money(m.proj)}</b><s>Proj profit</s></div>
+    </div>
+    <div style="font-size:11px;color:var(--faint);margin-bottom:14px;font-family:var(--mono)">UC price &amp; spread are internal — buyers only ever see the marketed price.</div>
+    <div class="mkt-tabs">${tabs.map(t=>`<button class="mkt-tab ${mktTab===t?'on':''}" onclick="setMktTab('${t}')">${tlabel[t]}</button>`).join("")}</div>
+    ${tabHtml}`;
+  if(mktTab==="brochure"){
+    const f=$("#brFrame");
+    if(f){
+      f.srcdoc=`<!doctype html><html><head><meta charset="utf-8"><style>${BROCHURE_CSS}body{margin:0;background:#eef1f4;padding:16px}</style></head><body>${brochureInner(d)}</body></html>`;
+      f.onload=()=>{try{f.style.height=(f.contentDocument.body.scrollHeight+4)+"px";}catch(e){}};
+    }
+  }
+}
+function setMkt(id){mktSel=id;renderMarketing();}
+function copyCopy(){navigator.clipboard?.writeText(blastCopy(byId(mktSel)));toast("Blast copy copied");}
+function copyBrochure(){navigator.clipboard?.writeText(brochureText(byId(mktSel)));toast("Brochure text copied");}
+function gotoBuyers(id){matchSel=id;switchView("buyers");}
+
+//=================== BUYERS ===================
+let matchSel=null;
+function buyerFit(b,d){
+  const zips=b.zips||[];
+  if(zips.includes(d.zip))return {score:100,why:["buys "+d.zip]};
+  return {score:20,why:[d.zip+" not in their ZIPs"]};
+}
+function renderBuyers(){
+  const head=$("#matchHead");
+  if(!DEALS.length){head.innerHTML=`<span style="color:var(--muted);font-size:13px">Add a deal first, then match VIP buyers against it.</span>`;$("#buyerList").innerHTML="";return;}
+  if(!matchSel||!byId(matchSel))matchSel=DEALS[0].id;
+  head.innerHTML=`<span style="color:var(--muted);font-size:13px">Match buyers to</span>
+    <select class="search" id="matchDeal">${DEALS.map(d=>`<option value="${d.id}" ${d.id===matchSel?"selected":""}>${esc(d.addr)} — ${esc(d.city)} ${d.zip}</option>`).join("")}</select>`;
+  head.querySelector("#matchDeal").onchange=e=>{matchSel=e.target.value;renderBuyers();};
+  const d=byId(matchSel);
+  const ranked=ST.buyers.map(b=>({b,f:buyerFit(b,d)})).sort((x,y)=>y.f.score-x.f.score);
+  $("#buyerList").innerHTML=ranked.map(({b,f})=>{
+    const c=f.score>=70?"var(--money)":f.score>=40?"var(--warm)":"var(--faint)";
+    const co=[b.name,b.phone,b.email].filter(Boolean).join(" · ");
+    return `<div class="buyer">
+      <div class="fit" style="background:${c}22;color:${c}">${f.score}</div>
+      <div class="bmain"><div class="bname">${esc(b.llc||b.name||"Buyer")} <span class="btier vip">VIP</span>${b.note==="example"?'<span style="font-size:10px;color:var(--faint)">· example</span>':''}</div>
+        ${co?`<div class="bwhy">${esc(co)}</div>`:''}
+        <div class="bwhy">${f.why.join(" · ")} · ZIPs: ${(b.zips||[]).join(", ")||"none"}</div></div>
+      <button class="btn ghost sm" onclick="delBuyer('${b.id}')">Remove</button></div>`;
+  }).join("")||`<p style="color:var(--faint)">No buyers yet — add some above.</p>`;
+}
+function delBuyer(id){ST.buyers=ST.buyers.filter(b=>b.id!==id);save("buyers");renderBuyers();}
+function openBuyerModal(){
+  const w=modal(`<h3>Add VIP buyer</h3>
+    <div class="field"><label>LLC / Company</label><input id="b_llc" placeholder="e.g. Meridian Capital REI"></div>
+    <div class="field"><label>Contact name</label><input id="b_name" placeholder="e.g. Dave Kohl"></div>
+    <div class="row2">
+      <div class="field"><label>Phone</label><input id="b_phone" placeholder="(216) 555-0142"></div>
+      <div class="field"><label>Email</label><input id="b_email" placeholder="dave@meridianrei.com"></div>
+    </div>
+    <div class="field"><label>ZIP codes they buy (comma separated)</label>
+      <input id="b_zips" placeholder="44109, 44111, 45211">
+      <div id="b_zip_err" class="fielderr"></div></div>
+    <div class="copy-actions"><button class="btn" id="bsave">Add buyer</button><button class="btn ghost" data-close>Cancel</button></div>`);
+  const g=id=>w.querySelector(id).value.trim();
+  w.querySelector("#bsave").onclick=()=>{
+    const llc=g("#b_llc"),name=g("#b_name");
+    if(!llc&&!name){w.querySelector("#b_llc").focus();return;}
+    const zips=g("#b_zips").split(",").map(z=>z.trim()).filter(Boolean);
+    const err=w.querySelector("#b_zip_err");
+    if(!zips.length||!zips.every(z=>/^\d{5}$/.test(z))){
+      err.textContent="Enter one or more valid 5-digit ZIP codes, separated by commas.";
+      w.querySelector("#b_zips").focus();return;
+    }
+    ST.buyers.push({id:"b"+Date.now(),llc,name,phone:g("#b_phone"),email:g("#b_email"),zips,tier:"vip",note:""});
+    save("buyers");w.remove();renderBuyers();toast((llc||name)+" added");};
+}
+
+//=================== ADD / EDIT DEAL ===================
+function dealModal(existing){
+  const d=existing||{st:"OH",status:"PICS",cond:"light",occ:"vacant",days:30,fc:false};
+  const opt=(v,cur)=>`<option value="${v}" ${v==cur?"selected":""}>${v}</option>`;
+  const w=modal(`<h3>${existing?"Edit deal":"Add deal"}</h3>
+    <div class="field"><label>Street address</label><input id="f_addr" value="${existing?esc(d.addr):""}" placeholder="123 Main St"></div>
+    <div class="row3">
+      <div class="field"><label>City</label><input id="f_city" value="${existing?esc(d.city):""}"></div>
+      <div class="field"><label>State</label><input id="f_st" value="${d.st||"OH"}" maxlength="2"></div>
+      <div class="field"><label>ZIP</label><input id="f_zip" value="${d.zip||""}"></div>
+    </div>
+    <div class="row2">
+      <div class="field"><label>Status</label><select id="f_status">${STATUSES.map(s=>opt(s,d.status)).join("")}</select></div>
+      <div class="field"><label>Deal rating</label><select id="f_rating">${[[0,"— unrated"],[1,"★ 1"],[2,"★★ 2"],[3,"★★★ 3"],[4,"★★★★ 4"],[5,"★★★★★ 5"]].map(([v,l])=>`<option value="${v}" ${v==(d.rating||0)?"selected":""}>${l}</option>`).join("")}</select></div>
+    </div>
+    <div class="field"><label>Timeline (days)</label><select id="f_days">${[30,45,60,90].map(s=>opt(s,d.days)).join("")}</select></div>
+    <div class="row2">
+      <div class="field"><label>UC price (buy)</label><input id="f_uc" type="number" value="${d.uc??""}" placeholder="90000"></div>
+      <div class="field"><label>Marketed price (sell)</label><input id="f_mkt" type="number" value="${d.mkt??""}" placeholder="115000"></div>
+    </div>
+    <div class="field"><label>ARV / market value <span style="text-transform:none;color:var(--faint)">(optional)</span></label><input id="f_mv" type="number" value="${d.mv||""}" placeholder="150000"></div>
+    <div class="row3">
+      <div class="field"><label>Beds</label><input id="f_bd" type="number" value="${d.bd||""}"></div>
+      <div class="field"><label>Baths</label><input id="f_ba" type="number" value="${d.ba||""}"></div>
+      <div class="field"><label>Sqft</label><input id="f_sf" type="number" value="${d.sf||""}"></div>
+    </div>
+    <div class="row2">
+      <div class="field"><label>Condition</label><select id="f_cond">${[["light","Light / rent-ready"],["medium","Cosmetic + updates"],["heavy","Heavy rehab"]].map(([v,l])=>`<option value="${v}" ${v==d.cond?"selected":""}>${l}</option>`).join("")}</select></div>
+      <div class="field"><label>Occupancy</label><select id="f_occ">${["vacant","owner","tenant"].map(s=>opt(s,d.occ)).join("")}</select></div>
+    </div>
+    <div class="field chk"><input type="checkbox" id="f_fc" ${d.fc?"checked":""}><label for="f_fc">Free &amp; clear (no mortgage)</label></div>
+    <div class="row2">
+      <div class="field"><label>Seller name</label><input id="f_seller" value="${existing?esc(d.seller||""):""}"></div>
+      <div class="field"><label>Seller phone</label><input id="f_ph" value="${existing?esc(d.ph||""):""}"></div>
+    </div>
+    <div class="field"><label>Notes / why it moves</label><input id="f_note" value="${existing?esc(d.note||""):""}" placeholder="motivated — two mortgages, needs out fast"></div>
+    <div class="copy-actions">
+      <button class="btn" id="f_save">${existing?"Save changes":"Add deal"}</button>
+      <button class="btn ghost" data-close>Cancel</button>
+      ${existing?`<span style="flex:1"></span><button class="btn danger" id="f_del">Delete</button>`:""}
+    </div>`);
+  const g=id=>w.querySelector(id).value.trim();
+  w.querySelector("#f_save").onclick=()=>{
+    if(!g("#f_addr")){w.querySelector("#f_addr").focus();return;}
+    const ucRaw=g("#f_uc"),mktRaw=g("#f_mkt"),mvRaw=g("#f_mv");
+    const rec={
+      id:existing?d.id:"d"+Date.now(),
+      addr:g("#f_addr"),city:g("#f_city"),st:(g("#f_st")||"OH").toUpperCase(),zip:g("#f_zip"),
+      status:w.querySelector("#f_status").value,days:+w.querySelector("#f_days").value,
+      rating:+w.querySelector("#f_rating").value,
+      uc:ucRaw===""?null:+ucRaw,mkt:mktRaw===""?null:+mktRaw,mv:mvRaw===""?null:+mvRaw,
+      bd:+g("#f_bd")||"",ba:+g("#f_ba")||"",sf:+g("#f_sf")||"",
+      cond:w.querySelector("#f_cond").value,occ:w.querySelector("#f_occ").value,
+      fc:w.querySelector("#f_fc").checked,
+      seller:g("#f_seller"),ph:g("#f_ph"),em:existing?(d.em||""):"",note:g("#f_note")};
+    if(existing){const i=ST.deals.findIndex(x=>x.id===d.id);ST.deals[i]=rec;}
+    else ST.deals.push(rec);
+    save("deals");w.remove();render();toast(existing?"Deal updated":rec.addr+" added");};
+  if(existing)w.querySelector("#f_del").onclick=()=>{
+    ST.deals=ST.deals.filter(x=>x.id!==d.id);delete ST.blast[d.id];
+    save("deals");save("blast");w.remove();render();toast("Deal deleted");};
+}
+function addDeal(){dealModal(null);}
+function editDeal(id){dealModal(ST.deals.find(d=>d.id===id));}
+function loadSamples(){ST.deals=SEED_DEALS.map(d=>({...d}));save("deals");render();toast("Loaded tracker deals");}
+
+//=================== SHELL ===================
+function modal(inner){const bg=document.createElement("div");bg.className="modal-bg";
+  bg.innerHTML=`<div class="modal">${inner}</div>`;document.body.appendChild(bg);
+  bg.onclick=e=>{if(e.target===bg||e.target.hasAttribute("data-close"))bg.remove();};
+  return bg.querySelector(".modal");}
+const TITLES={cascade:["Blast Snapshot","How far each active deal has moved through the blast order."],
+  deals:["Deal Insights","Your deals with spread, projected profit, and activity."],
+  marketing:["Marketing Prep","Auto-built blast copy and one-sheets per deal."],
+  buyers:["VIP Buyer Match","Match your VIP cash buyers to a deal by ZIP code."]};
+let curView="cascade";
+function switchView(v){curView=v;
+  $$("#nav button").forEach(b=>b.classList.toggle("on",b.dataset.v===v));
+  $$(".view").forEach(s=>s.hidden=s.id!=="view-"+v);
+  $("#vTitle").textContent=TITLES[v][0];$("#vSub").textContent=TITLES[v][1];
+  if(v==="marketing")renderMarketing();if(v==="buyers")renderBuyers();}
+function render(){rebuild();renderKpis();renderDeals();renderCascade();
+  if(curView==="marketing")renderMarketing();if(curView==="buyers")renderBuyers();}
+let toastT;function toast(m){const t=$("#toast");t.textContent=m;t.classList.add("show");clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove("show"),1900);}
+
+$("#nav").onclick=e=>{const b=e.target.closest("button");if(b)switchView(b.dataset.v);};
+$("#railAdd").onclick=addDeal;
+$("#addBuyer").onclick=openBuyerModal;
+$("#reset").onclick=async()=>{ST.deals=SEED_DEALS.map(d=>({...d}));ST.blast={};ST.buyers=SAMPLE_BUYERS.slice();
+  try{await window.storage.delete("deals");await window.storage.delete("blast");await window.storage.delete("buyers");}catch(e){}
+  save("deals");render();toast("Reset to tracker deals");};
+//=================== TRACKER SYNC ===================
+const normAddr=s=>String(s||"").toLowerCase().replace(/[.,#]/g," ").replace(/\b(street|st|avenue|ave|road|rd|drive|dr|place|pl|lane|ln|court|ct|boulevard|blvd)\b/g,"").replace(/\s+/g," ").trim();
+function parseAddr(raw){
+  const m=String(raw||"").match(/^(.*?),\s*([^,]+?),\s*([A-Za-z]{2})\.?\s*(\d{5})?(?:-\d{4})?\s*$/);
+  if(m)return{addr:m[1].trim(),city:m[2].trim(),st:m[3].toUpperCase(),zip:m[4]||""};
+  return{addr:String(raw||"").trim(),city:"",st:"",zip:""};
+}
+let syncing=false;
+async function syncTracker(silent){
+  if(syncing)return;syncing=true;
+  const btn=$("#syncBtn");if(btn){btn.disabled=true;btn.textContent="Syncing\u2026";}
+  try{
+    const r=await fetch(TRACKER_API+"?token="+encodeURIComponent(TRACKER_TOKEN));
+    const j=await r.json();
+    if(!j||!Array.isArray(j.sections))throw new Error((j&&j.error)||"bad response");
+    const have=new Set(ST.deals.map(d=>normAddr(d.addr)));
+    const saleKeys=new Set(),soldKeys=new Set(),otherKeys=new Set();
+    let added=0;
+    j.sections.forEach(secObj=>{
+      const sec=String(secObj.name||"").toUpperCase();
+      const kind=sec.indexOf(SEC_ACTIVE)>-1?"sale":(SEC_SOLD.some(s=>sec.indexOf(s)>-1)?"sold":"other");
+      (secObj.deals||[]).forEach(row=>{
+        const p=parseAddr(row.address);
+        const key=normAddr(p.addr);
+        if(!key)return;
+        if(kind==="sale"&&!row.cancelled){
+          saleKeys.add(key);
+          if(have.has(key))return;
+          const raw=String(row.status||"").toUpperCase().trim();
+          const status=TRACKER_STATUS_MAP[raw]||(raw.indexOf("MARKET")>-1?"Marketing":"Need Pics");
+          const price=typeof row.price==="number"?row.price:(Number(String(row.price||"").replace(/[^0-9.]/g,""))||null);
+          ST.deals.unshift({...D0,src:"tracker",
+            id:"t"+Date.now().toString(36)+Math.random().toString(36).slice(2,6),
+            addr:p.addr,city:p.city,st:p.st,zip:p.zip,status,uc:price||null,
+            note:row.coe?("COE "+row.coe):""});
+          have.add(key);added++;
+        }else if(kind==="sold"){soldKeys.add(key);}
+        else{otherKeys.add(key);}
+      });
+    });
+    // Archive deals that left the need-to-be-sold section (never delete — blast
+    // history stays). ASSIGNED/EMD/CTC/CLOSED -> "Sold Deals"; killed or removed
+    // from the tracker -> "Cancel". Manual deals & already-archived cards untouched.
+    let sold=0,axed=0;
+    ST.deals.forEach(d=>{
+      if(d.src!=="tracker"||DEAD_STATES.includes(d.status))return;
+      const k=normAddr(d.addr);
+      if(saleKeys.has(k))return;
+      if(soldKeys.has(k)){d.status="Sold Deals";sold++;}
+      else{d.status="Cancel";axed++;}
+    });
+    if(added||sold||axed){save("deals");render();}
+    if(!silent||added||sold||axed){
+      const bits=[];if(added)bits.push("+"+added+" new");
+      if(sold)bits.push(sold+" \u2192 Sold Deals");if(axed)bits.push(axed+" \u2192 Cancel");
+      toast(bits.length?("Tracker sync: "+bits.join(", ")):"Tracker sync: up to date");
+    }
+  }catch(e){if(!silent)toast("Tracker sync failed \u2014 check connection & retry");}
+  finally{syncing=false;const b=$("#syncBtn");if(b){b.disabled=false;b.textContent="\u27F3 Sync tracker";}}
+}
+window.syncTracker=syncTracker;
+
+Object.assign(window,{toggleBlast,setRating,setStatus,openStats,setDetail,setMktTab,printBrochure,copyBrochure,delBuyer,copyCopy,setMkt,switchView,addDeal,editDeal,loadSamples,gotoBuyers});
+
+(async()=>{
+  await load();render();
+  const sb=$("#syncBtn");if(sb)sb.onclick=()=>syncTracker(false);
+  syncTracker(true);
+  setInterval(()=>syncTracker(true),SYNC_MINUTES*60000);
+})();
+</script>
+</body>
+</html>
