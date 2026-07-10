@@ -197,8 +197,8 @@
   .coe-date-in{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;border:0;padding:0}
   /* 2-up chip grid on each deal card (Status-COE / Signed-Mkt / Title-ACQ) */
   .chip-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px;align-items:start}
-  .chip-grid>*{width:100%;min-width:0;box-sizing:border-box;overflow:hidden}
-  .chip-grid .status-sel{max-width:none}
+  .chip-grid>*{width:100%;min-width:0;box-sizing:border-box;white-space:normal;line-height:1.3;overflow:visible}
+  .chip-grid .status-sel{max-width:none;padding:3px 2px;letter-spacing:.2px}
   .chip-grid .dbx-chip{grid-column:1 / -1}   /* Dropbox spans the full width */
   /* read-only info chips (ACQ / Title / COE) — display only, no click affordance */
   .acq-chip.ro,.title-chip.ro,.coe-chip.ro{cursor:default}
@@ -318,7 +318,7 @@
   .mpct{font-family:var(--mono);font-size:11px;color:var(--muted);margin-left:3px}
 
   /* cascade grid + card */
-  .cgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px}
+  .cgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}
   .cdeal{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:13px 14px;color:var(--text);display:flex;flex-direction:column;box-shadow:var(--pg-shadow)}
   .cdeal-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
   .cdeal-id{display:flex;flex-direction:column;gap:6px;min-width:0}
