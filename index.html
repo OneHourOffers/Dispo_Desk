@@ -483,7 +483,14 @@ const SAMPLE_BUYERS=[
 //=================== TRACKER SYNC CONFIG ===================
 const TRACKER_API="https://script.google.com/macros/s/AKfycbw5IMD8ULM4pnBrUnhjLadeYIwP0yRNk8iWuap0BiFsDDSmx-9FsiqdbLDzQGob6nTW/exec";
 const TRACKER_TOKEN="oho-2026-x7";
-const SYNC_MINUTES=5;                       // auto-check interval
+// ↓↓↓ Separate DispoDesk web app (shared blast/ratings/etc.). Paste its /exec URL
+// here after you deploy the standalone DispoDesk.gs. Until it's set, the desk still
+// works — it just won't share edits between people.
+const DISPO_API="https://script.google.com/macros/s/AKfycbxxRW9gYY_7N8b72EpElR2ep7Rm5x6Ar2sS16Y6mJfUyBU6f6xMsj7x9WExGP0bww5A/exec";
+const DISPO_TOKEN="oho-dispo-2026";          // must match TOKEN in the DispoDesk Apps Script
+const dispoOn=()=>/^https:\/\/script\.google\.com\//.test(DISPO_API);
+const FULL_SYNC_SEC=300;                    // heavy full tracker read every 5 min (also on refresh + Sync button)
+const DISPO_POLL_SEC=5;                      // lightweight shared-edit poll (blast/ratings/etc. from teammates)
 const TRACKER_STATUS_MAP={"PICS":"Need Pics","NEED PICS":"Need Pics","MARKET":"Marketing","MARKETING":"Marketing"};
 // Section routing (matched by substring, case-insensitive):
 const SEC_ACTIVE="NEED TO SELL";                       // -> active board (matches "Deals that Need To Sell" etc.)
@@ -514,7 +521,12 @@ async function load(){
   try{const b=await window.storage.get("buyers");ST.buyers=b?JSON.parse(b.value):SAMPLE_BUYERS.slice();}catch(e){ST.buyers=SAMPLE_BUYERS.slice();}
   if(!ST.buyers)ST.buyers=SAMPLE_BUYERS.slice();
 }
-async function save(k){try{await window.storage.set(k,JSON.stringify(ST[k]));}catch(e){}}
+async function save(k,opt){
+  try{await window.storage.set(k,JSON.stringify(ST[k]));}catch(e){}
+  // Mirror desk-side edits (blast, deal overlay, buyers) up to the shared sheet
+  // so Daniel & Carson see them. opt.push===false skips it (used by sync's own saves).
+  if((!opt||opt.push!==false)&&(k==="blast"||k==="deals"||k==="buyers"))pushShared();
+}
 
 //=================== DERIVED ===================
 let DEALS=[];
@@ -1214,8 +1226,9 @@ async function syncTracker(silent){
       if(soldKeys.has(k)){d.status="Sold Deals";sold++;}
       else{d.status="Cancel";axed++;}
     });
-    save("deals");   // always persist refreshed write-back pointers
-    if(added||sold||axed||restatused||restored){render();}
+    if(j.dispo!==undefined)applyShared(j.dispo);   // pull shared desk state (blast, overlay, manual deals, buyers)
+    save("deals",{push:false});   // persist refreshed pointers locally; don't echo back to the sheet
+    if(added||sold||axed||restatused||restored||j.dispo!==undefined){render();}
     if(!silent||added||sold||axed||restored){
       const bits=[];if(added)bits.push("+"+added+" new");if(restored)bits.push(restored+" back on the board");
       if(sold)bits.push(sold+" \u2192 Sold Deals");if(axed)bits.push(axed+" \u2192 Cancel");
@@ -1236,13 +1249,85 @@ async function syncTracker(silent){
 }
 window.syncTracker=syncTracker;
 
+//=================== SHARED STATE (multi-user via the DispoDesk sheet tab) ===================
+// A deal's desk-side state (blast progress, rating, NEW, Dropbox, marketing date,
+// stats) is keyed by PROPERTY ADDRESS for tracker deals — so an edit on one
+// machine lands on the same deal on everyone else's — and by id for manual deals.
+function stableKey(d){return d.src==="tracker" ? "a:"+normAddr(d.addr) : "m:"+d.id;}
+function buildShared(){
+  const overlay={}, blast={};
+  ST.deals.forEach(d=>{
+    const sk=stableKey(d);
+    if(ST.blast[d.id]&&Object.keys(ST.blast[d.id]).length)blast[sk]=ST.blast[d.id];
+    if(d.src==="tracker")
+      overlay[normAddr(d.addr)]={rating:d.rating||0,isNew:!!d.isNew,dropbox:d.dropbox||"",mktStart:d.mktStart||"",stats:d.stats||null};
+  });
+  const manual=ST.deals.filter(d=>d.src!=="tracker").map(d=>({...d}));
+  return {overlay,blast,manual,buyers:ST.buyers||[]};
+}
+function applyShared(shared){
+  if(!shared||typeof shared!=="object"||!Object.keys(shared).length){pushShared();return;}  // empty store -> seed it from this browser
+  // Manual deals: the shared list is authoritative (keeps their stable ids).
+  if(Array.isArray(shared.manual)){
+    const tracker=ST.deals.filter(d=>d.src==="tracker");
+    const manual=shared.manual.map(d=>({...d})).filter(d=>d&&d.src!=="tracker");
+    ST.deals=manual.concat(tracker);
+  }
+  if(Array.isArray(shared.buyers))ST.buyers=shared.buyers.map(b=>({...b}));
+  // Per-deal overlay onto tracker deals (matched by normalized address).
+  const ov=shared.overlay;
+  if(ov)ST.deals.forEach(d=>{
+    if(d.src!=="tracker")return;
+    const o=ov[normAddr(d.addr)];if(!o)return;
+    d.rating=o.rating||0; d.isNew=!!o.isNew; d.dropbox=o.dropbox||"";
+    if(o.mktStart)d.mktStart=o.mktStart;
+    if(o.stats)d.stats=o.stats;
+  });
+  // Blast progress: rebuild from shared, mapping stable keys back to local ids.
+  if(shared.blast&&typeof shared.blast==="object"){
+    const nb={};
+    ST.deals.forEach(d=>{const sk=stableKey(d);if(shared.blast[sk])nb[d.id]=shared.blast[sk];});
+    ST.blast=nb;
+  }
+}
+let pushT,pendingPush=false,lastDispoJSON=null;
+function pushShared(){
+  if(!dispoOn())return;   // shared backend not configured yet — stay local
+  clearTimeout(pushT);
+  pushT=setTimeout(()=>{
+    pendingPush=true;
+    fetch(DISPO_API,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},
+      body:JSON.stringify({token:DISPO_TOKEN,action:"saveDispo",data:buildShared()})})
+      .then(r=>r.json()).then(j=>{if(!(j&&j.ok))console.warn("[DispoDesk] saveDispo failed:",j);})
+      .catch(e=>console.warn("[DispoDesk] saveDispo error:",e))
+      .finally(()=>{pendingPush=false;});
+  },800);
+}
+// Lightweight poll: pulls ONLY the DispoDesk tab (cheap) so teammates' edits
+// appear within a few seconds without re-reading the whole tracker.
+async function pollDispo(){
+  if(!dispoOn()||pendingPush)return;   // not configured, or don't clobber our own in-flight edit (separate endpoint, so the full sync doesn't block it)
+  try{
+    const r=await fetch(DISPO_API+"?token="+encodeURIComponent(DISPO_TOKEN)+"&dispo=1");
+    const j=await r.json();
+    if(!j||j.dispo===undefined)return;
+    const s=JSON.stringify(j.dispo);
+    if(s===lastDispoJSON)return;    // unchanged since last poll — skip work
+    lastDispoJSON=s;
+    applyShared(j.dispo);
+    render();
+  }catch(e){/* offline / transient — ignore, next tick retries */}
+}
+
 Object.assign(window,{toggleBlast,setRating,setStatus,setSheetStatus,toggleNew,setMktDate,editDropbox,copyDropbox,editAcq,editTitle,setCoeDate,openStats,setDetail,setMktTab,printBrochure,copyBrochure,delBuyer,copyCopy,setMkt,switchView,addDeal,editDeal,loadSamples,gotoBuyers});
 
 (async()=>{
   await load();render();
   const sb=$("#syncBtn");if(sb)sb.onclick=()=>syncTracker(false);
   syncTracker(true);
-  setInterval(()=>syncTracker(true),SYNC_MINUTES*60000);
+  pollDispo();                                             // pull shared state right away
+  setInterval(()=>syncTracker(true),FULL_SYNC_SEC*1000);   // heavy full read, slow cadence
+  setInterval(pollDispo,DISPO_POLL_SEC*1000);              // shared desk edits, fast cadence
 })();
 
 /* ===== Arizona clock (America/Phoenix) ===== */
