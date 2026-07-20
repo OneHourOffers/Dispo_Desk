@@ -201,6 +201,19 @@
   .chip-grid>*{width:100%;min-width:0;box-sizing:border-box;white-space:normal;line-height:1.3;overflow:visible}
   .chip-grid .status-sel{max-width:none;padding:3px 2px;letter-spacing:.2px}
   .chip-grid .dbx-chip{grid-column:1 / -1}   /* Dropbox spans the full width */
+  /* Deal-type button — small square in the card's button column, under Stats/NEW */
+  .dtype-btn{display:inline-block;padding:6px 10px;border-radius:8px;font-family:var(--mono);font-weight:800;
+    font-size:11.5px;text-align:center;letter-spacing:.06em;text-transform:uppercase;line-height:1;cursor:pointer;
+    background:var(--accent-light);color:var(--navy);border:1px solid var(--accent-border)}
+  .dtype-btn:hover{filter:brightness(.97)}
+  .dtype-btn.nov{background:var(--purple-dim);color:var(--purple);border-color:rgba(107,72,200,.25)}
+  .dtype-btn.none{background:none;color:var(--muted);border:1px dashed var(--line2);font-weight:700;letter-spacing:.02em}
+  .dtype-btn.none:hover{color:var(--navy);border-color:var(--navy);filter:none}
+  /* Deal-type control inside the Stats modal */
+  .dtype-row{display:flex;gap:8px;align-items:center}
+  .dtype-sel{flex:1;background:var(--surface);border:1px solid var(--line2);border-radius:9px;padding:9px 11px;
+    color:var(--text);font-size:13px;font-family:var(--mono);font-weight:700;letter-spacing:.04em;cursor:pointer}
+  .dtype-hint{font-size:11px;color:var(--faint);margin-top:6px;line-height:1.4}
   /* read-only info chips (ACQ / Title / COE) — display only, no click affordance */
   .acq-chip.ro,.title-chip.ro,.coe-chip.ro{cursor:default}
   .acq-chip.ro:hover,.title-chip.ro:hover,.coe-chip.ro:hover{filter:none}
@@ -467,6 +480,17 @@ const STAGES=[
  {key:"agents",name:"Agents",      short:"Agt",v:"--agents"},
  {key:"fb",    name:"Facebook",    short:"FB", v:"--fb"},
 ];
+// Novations don't run the standard buyer-blast channels — they just need pics
+// up and the property live on the open market. So NOV deals use these stages.
+const NOV_STAGES=[
+ {key:"pics", name:"Pics",           short:"Pics",v:"--fb"},
+ {key:"live", name:"Live On Market", short:"Live",v:"--ibase"},
+];
+// Deal types shown in the Stats panel (a custom one can be typed in via the ✎).
+const DEAL_TYPES=["CASH","NOV","SUB2","S/FI","1HO"];
+const isNov=d=>String((d&&d.dealType)||"").toUpperCase()==="NOV";
+// The blast stages that apply to a given deal (NOV gets its own set).
+const stagesFor=d=>isNov(d)?NOV_STAGES:STAGES;
 const STATUSES=["Need Pics","Marketing","Assigned","Sold Deals","Closed","Cancel"];
 const DEAD_STATES=["Sold Deals","Closed","Cancel"];
 
@@ -572,8 +596,8 @@ let DEALS=[];
 function rebuild(){DEALS=ST.deals.map(d=>({...d,m:model(d)}));}
 const byId=id=>DEALS.find(d=>d.id===id);
 const isDone=(id,key)=>!!(ST.blast[id]&&ST.blast[id][key]);
-const doneCount=id=>STAGES.filter(s=>isDone(id,s.key)).length;
-const progress=id=>doneCount(id)/STAGES.length;
+const doneCount=id=>{const d=ST.deals.find(x=>x.id===id);return stagesFor(d).filter(s=>isDone(id,s.key)).length;};
+const progress=id=>{const d=ST.deals.find(x=>x.id===id),n=stagesFor(d).length;return n?doneCount(id)/n:0;};
 const anyBlast=id=>doneCount(id)>0;
 const isLive=d=>!DEAD_STATES.includes(d.status);
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
@@ -595,7 +619,7 @@ function renderKpis(){
   const cnt=re=>live.filter(d=>re.test(raw(d))).length;
   const needPics=cnt(/pic/i), marketing=cnt(/market/i), priceDrop=cnt(/price\s*drop/i);
   // Total blast = every blast slot completed across all deals, out of all slots.
-  const blastDone=live.reduce((a,d)=>a+doneCount(d.id),0), blastPoss=live.length*STAGES.length;
+  const blastDone=live.reduce((a,d)=>a+doneCount(d.id),0), blastPoss=live.reduce((a,d)=>a+stagesFor(d).length,0);
   const scored=live.filter(d=>!d.m.needs);
   const totalSpread=scored.reduce((a,d)=>a+d.m.spread,0);
   const projProfit=totalSpread*PROFIT_FACTOR;
@@ -668,7 +692,7 @@ function renderDeals(){
   const mkv=d=>d.m.mkt||1e12;
   const S={rating:(a,b)=>(b.rating||0)-(a.rating||0)||b.m.proj-a.m.proj,proj:(a,b)=>b.m.proj-a.m.proj,
     spread:(a,b)=>b.m.spread-a.m.spread,blast:(a,b)=>progress(b.id)-progress(a.id),mkt:(a,b)=>mkv(a)-mkv(b)};
-  list.sort(S[dealSort]);
+  list.sort((a,b)=>((b.isNew?1:0)-(a.isNew?1:0))||S[dealSort](a,b));   // NEW deals first, then the chosen sort
   $("#dealGrid").innerHTML=`<div class="grid">${list.map(dealCard).join("")}</div>`;
 }
 function emptyState(){
@@ -832,6 +856,11 @@ function statusSelect(d){
   return `<select class="status-sel ${stCls(d.status)}" title="Change status" onchange="setStatus('${d.id}',this.value)">${STATUSES.map(s=>`<option value="${s}" ${s===d.status?"selected":""}>${s}</option>`).join("")}</select>`;
 }
 function dealStats(d){if(!d.stats||typeof d.stats!=="object")d.stats={walk:0,offers:0,feedback:[]};if(!Array.isArray(d.stats.feedback))d.stats.feedback=[];return d.stats;}
+// Deal-type badge on each card — click opens Stats where the type is set.
+function dealTypeBadge(d){
+  const t=String(d.dealType||"").trim();
+  return `<button class="dtype-btn${t?(isNov(d)?" nov":""):" none"}" title="Deal type — click to set in Stats" onclick="openStats('${d.id}')">${t?esc(t):"Type"}</button>`;
+}
 function statsSummary(d){
   const s=d.stats;if(!s)return"";
   const w=s.walk||0,o=s.offers||0,f=(s.feedback||[]).length,parts=[];
@@ -846,7 +875,18 @@ function counter(label,key,val){
 }
 function openStats(id){
   const body=()=>{const d=ST.deals.find(x=>x.id===id),s=dealStats(d);
+    const cur=String(d.dealType||"").trim();
+    const base=DEAL_TYPES.slice();if(cur&&!base.includes(cur))base.unshift(cur);
+    const typeOpts=`<option value="" ${cur?"":"selected"}>— none —</option>`+
+      base.map(t=>`<option value="${esc(t)}" ${t===cur?"selected":""}>${esc(t)}</option>`).join("");
     return `<h3>Deal stats — ${esc(d.addr)}</h3>
+      <div class="field" style="margin-top:2px"><label>Deal type</label>
+        <div class="dtype-row">
+          <select id="dtype_sel" class="dtype-sel">${typeOpts}</select>
+          <button class="btn sm ghost" id="dtype_edit" title="Add a custom deal type">&#9998;</button>
+        </div>
+        <div class="dtype-hint">CASH, NOV, SUB2, S/FI, 1HO… &mdash; NOV deals blast as Pics &amp; Live On Market.</div>
+      </div>
       <div class="stat-rows">
         ${counter("Walkthroughs","walk",s.walk)}
         ${counter("Offers received","offers",s.offers)}
@@ -860,6 +900,10 @@ function openStats(id){
   const bg=w.parentElement;
   bg.addEventListener("click",e=>{if(e.target===bg||e.target.hasAttribute("data-close"))render();});
   const wire=()=>{
+    const dsel=w.querySelector("#dtype_sel");
+    if(dsel)dsel.onchange=()=>{const d=ST.deals.find(x=>x.id===id);d.dealType=dsel.value;save("deals");render();w.innerHTML=body();wire();};
+    const dedit=w.querySelector("#dtype_edit");
+    if(dedit)dedit.onclick=()=>{const d=ST.deals.find(x=>x.id===id);const v=prompt("Deal type for "+d.addr+" (e.g. CASH, NOV, SUB2, S/FI, 1HO):",d.dealType||"");if(v===null)return;d.dealType=v.trim().toUpperCase();save("deals");render();w.innerHTML=body();wire();toast(d.dealType?("Deal type set — "+d.dealType):"Deal type cleared");};
     w.querySelectorAll(".stepper").forEach(b=>b.onclick=()=>{const d=ST.deals.find(x=>x.id===id),s=dealStats(d);s[b.dataset.k]=Math.max(0,(s[b.dataset.k]||0)+(+b.dataset.inc));save("deals");w.innerHTML=body();wire();});
     const add=w.querySelector("#fb_add"),inp=w.querySelector("#fb_in");
     if(add)add.onclick=()=>{const v=inp.value.trim();if(!v)return;const d=ST.deals.find(x=>x.id===id),s=dealStats(d);s.feedback.unshift({text:v,at:Date.now()});save("deals");w.innerHTML=body();wire();};
@@ -882,9 +926,10 @@ function ucMktTags(d){
 }
 function blastFlow(d){
   let h='<div class="flow">';
-  STAGES.forEach((s,i)=>{
+  const SG=stagesFor(d);
+  SG.forEach((s,i)=>{
     const isD=isDone(d.id,s.key);
-    if(i>0)h+=`<div class="fbar ${isDone(d.id,STAGES[i-1].key)&&isD?'done':''}"></div>`;
+    if(i>0)h+=`<div class="fbar ${isDone(d.id,SG[i-1].key)&&isD?'done':''}"></div>`;
     const cls=isD?'done':'open';
     const tip=isD?' · blasted '+ago(ST.blast[d.id][s.key]):' · click to mark blasted';
     h+=`<div class="fnode ${cls}" style="--c:var(${s.v})" onclick="toggleBlast('${d.id}','${s.key}')" title="${s.name}${tip}">
@@ -894,7 +939,7 @@ function blastFlow(d){
 }
 function progBar(id){const p=Math.round(progress(id)*100);return `<div class="prog"><div class="prog-track"><div class="prog-fill" style="width:${p}%"></div></div><span class="prog-pct">${p}%</span></div>`;}
 function miniFlow(d){
-  return `<div class="mini-flow">${STAGES.map((s)=>{
+  return `<div class="mini-flow">${stagesFor(d).map((s)=>{
     const isD=isDone(d.id,s.key),cls=isD?'on':'open';
     return `<span class="mdot ${cls}" style="${isD?`background:var(${s.v});border-color:transparent;`:''}" title="${s.name}" onclick="toggleBlast('${d.id}','${s.key}')"></span>`;
   }).join("")}<span class="mpct">${Math.round(progress(d.id)*100)}%</span></div>`;
@@ -906,6 +951,7 @@ function renderCascade(){
   if(!live.length){body.innerHTML=`<div class="empty"><h3>Nothing to blast yet</h3><p>Add deals and they line up here so you can walk each one through the blast flow — VIP first, then Investorbase, Agents, and Facebook.</p><button class="btn" onclick="addDeal()">+ Add deal</button></div>`;return;}
   const list=live.slice().sort((a,b)=>
     (isAlarm(a)?1:0)-(isAlarm(b)?1:0)||                 // FUCKED UP / Price Drop always sink to the bottom
+    (b.isNew?1:0)-(a.isNew?1:0)||                       // NEW deals float to the top
     (b.rating||0)-(a.rating||0)||progress(b.id)-progress(a.id)||b.m.proj-a.m.proj);
   const blastedCount=key=>live.filter(d=>isDone(d.id,key)).length;   // deals blasted via this channel
   body.innerHTML=`<div class="cascade-legend">${STAGES.map((s)=>`<span><i style="background:var(${s.v})"></i>${blastedCount(s.key)} ${s.name}</span>`).join("")}</div>`+
@@ -921,7 +967,8 @@ function renderCascade(){
           <div style="display:flex;flex-direction:column;gap:6px;align-items:stretch">${(()=>{
             const statsBtn=`<button class="btn ghost sm" onclick="openStats('${d.id}')">Stats</button>`;
             const newBtn=`<button class="new-badge ${d.isNew?"on":"off"}" title="${d.isNew?"Click to clear":"Click to flag NEW for dispo"}" onclick="toggleNew('${d.id}')">NEW</button>`;
-            return d.isNew?newBtn+statsBtn:statsBtn+newBtn;})()}
+            const dtypeBtn=dealTypeBadge(d);
+            return (d.isNew?newBtn+statsBtn:statsBtn+newBtn)+dtypeBtn;})()}
           </div>
         </div>
         <div class="cdeal-flow">${blastFlow(d)}${progBar(d.id)}</div>
