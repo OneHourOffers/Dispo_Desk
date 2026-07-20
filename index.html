@@ -205,14 +205,17 @@
   .dtype-btn{display:inline-block;padding:6px 10px;border-radius:8px;font-family:var(--mono);font-weight:800;
     font-size:11.5px;text-align:center;letter-spacing:.06em;text-transform:uppercase;line-height:1;cursor:pointer;
     background:var(--accent-light);color:var(--navy);border:1px solid var(--accent-border)}
-  .dtype-btn:hover{filter:brightness(.97)}
   .dtype-btn.nov{background:var(--purple-dim);color:var(--purple);border-color:rgba(107,72,200,.25)}
-  .dtype-btn.none{background:none;color:var(--muted);border:1px dashed var(--line2);font-weight:700;letter-spacing:.02em}
-  .dtype-btn.none:hover{color:var(--navy);border-color:var(--navy);filter:none}
-  /* Deal-type control inside the Stats modal */
-  .dtype-row{display:flex;gap:8px;align-items:center}
-  .dtype-sel{flex:1;background:var(--surface);border:1px solid var(--line2);border-radius:9px;padding:9px 11px;
-    color:var(--text);font-size:13px;font-family:var(--mono);font-weight:700;letter-spacing:.04em;cursor:pointer}
+  .dtype-btn.none{background:none;color:var(--faint);border:1px dashed var(--line2);font-weight:700;letter-spacing:.02em}
+  .dtype-btn.ro{cursor:default}   /* read-only: pulled from the tracker, not clickable */
+  /* Deal-type read-only display inside the Stats modal */
+  .dtype-ro{display:flex;align-items:center;gap:10px;background:var(--surface2);border:1px solid var(--line2);
+    border-radius:9px;padding:9px 12px;font-family:var(--mono);font-weight:800;font-size:14px;letter-spacing:.04em;
+    text-transform:uppercase;color:var(--navy)}
+  .dtype-ro.nov{color:var(--purple)}
+  .dtype-ro.none{color:var(--faint);font-weight:600}
+  .dtype-ro-src{margin-left:auto;font-family:var(--body);font-weight:500;font-size:11px;letter-spacing:0;
+    text-transform:none;color:var(--faint)}
   .dtype-hint{font-size:11px;color:var(--faint);margin-top:6px;line-height:1.4}
   /* read-only info chips (ACQ / Title / COE) — display only, no click affordance */
   .acq-chip.ro,.title-chip.ro,.coe-chip.ro{cursor:default}
@@ -306,14 +309,14 @@
 
   /* blast flow (cascade) */
   .flow{display:flex;align-items:flex-start;justify-content:center}
-  .fnode{display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;flex:0 0 auto;width:42px;text-align:center}
+  .fnode{display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;flex:0 0 auto;width:58px;text-align:center}
   .fdot{width:26px;height:26px;border-radius:50%;border:2px solid var(--line2);display:flex;align-items:center;justify-content:center;font-size:11px;font-family:var(--mono);color:var(--faint);background:var(--surface2);transition:.15s}
   .fnode:hover .fdot{border-color:var(--c)}
   .fnode.done .fdot{border-color:var(--c);background:var(--c);color:#fff;font-weight:700}
   .fnode.next .fdot{border-color:var(--c);box-shadow:0 0 0 3px color-mix(in srgb,var(--c) 22%,transparent)}
   .fnode.locked{opacity:.42;cursor:not-allowed}
   .fnode.locked:hover .fdot{border-color:var(--line2)}
-  .flabel{font-size:10px;color:var(--muted);font-family:var(--mono)}
+  .flabel{font-size:9.5px;line-height:1.2;color:var(--muted);font-family:var(--mono);white-space:normal;word-break:break-word;hyphens:none}
   .fnode.done .flabel{color:var(--text)}
   .fbar{flex:1;height:2px;background:var(--line2);margin-top:13px;min-width:4px}
   .fbar.done{background:var(--money)}
@@ -380,7 +383,7 @@
   .fb-empty{color:var(--faint);font-size:12.5px;font-style:italic;padding:4px 0}
 
   @media (max-width:860px){
-    .cdeal-flow{gap:12px} .fnode{width:48px}
+    .cdeal-flow{gap:12px} .fnode{width:58px}
     body{flex-direction:column}
     .rail{width:100%;flex:none;height:auto;position:static;flex-direction:row;flex-wrap:wrap;align-items:center;gap:4px;padding:12px;overflow:visible}
     .brand{padding:0 12px 0 4px;border:0;margin:0;flex-direction:row;align-items:center} .brand-logo{max-width:120px}
@@ -476,9 +479,9 @@
 //=================== CONFIG ===================
 const STAGES=[
  {key:"vip",   name:"VIP",         short:"VIP",v:"--vip"},
- {key:"ibase", name:"Investorbase",short:"IB", v:"--ibase"},
- {key:"agents",name:"Agents",      short:"Agt",v:"--agents"},
- {key:"fb",    name:"Facebook",    short:"FB", v:"--fb"},
+ {key:"ibase", name:"InvestorBase",short:"InvestorBase", v:"--ibase"},
+ {key:"agents",name:"Agents",      short:"Agent",v:"--agents"},
+ {key:"fb",    name:"Facebook",    short:"Facebook", v:"--fb"},
 ];
 // Novations don't run the standard buyer-blast channels — they just need pics
 // up and the property live on the open market. So NOV deals use these stages.
@@ -488,7 +491,7 @@ const NOV_STAGES=[
 ];
 // Deal types shown in the Stats panel (a custom one can be typed in via the ✎).
 const DEAL_TYPES=["CASH","NOV","SUB2","S/FI","1HO"];
-const isNov=d=>String((d&&d.dealType)||"").toUpperCase()==="NOV";
+const isNov=d=>/\bNOV/.test(String((d&&d.dealType)||"").toUpperCase());
 // The blast stages that apply to a given deal (NOV gets its own set).
 const stagesFor=d=>isNov(d)?NOV_STAGES:STAGES;
 const STATUSES=["Need Pics","Marketing","Assigned","Sold Deals","Closed","Cancel"];
@@ -511,6 +514,15 @@ function ucOf(row){
     }
   }
   return null;
+}
+// Pull the Deal Type from the tracker's "Deal Type" column. The backend may key it
+// a few ways depending on the header; scan for any deal-type-ish key. "" if absent.
+function dealTypeOf(row){
+  if(!row)return"";
+  const keys=["dealType","deal_type","dealtype","DealType","dealTypeCol","type","Type"];
+  for(const k of keys){const v=row[k];if(v!=null&&String(v).trim()!=="")return String(v).trim();}
+  for(const k of Object.keys(row)){if(/deal.?type/i.test(k)){const v=row[k];if(v!=null&&String(v).trim()!=="")return String(v).trim();}}
+  return"";
 }
 function model(d){
   const uc=num(d.uc), mkt=num(d.mkt);
@@ -859,7 +871,7 @@ function dealStats(d){if(!d.stats||typeof d.stats!=="object")d.stats={walk:0,off
 // Deal-type badge on each card — click opens Stats where the type is set.
 function dealTypeBadge(d){
   const t=String(d.dealType||"").trim();
-  return `<button class="dtype-btn${t?(isNov(d)?" nov":""):" none"}" title="Deal type — click to set in Stats" onclick="openStats('${d.id}')">${t?esc(t):"Type"}</button>`;
+  return `<span class="dtype-btn ro${t?(isNov(d)?" nov":""):" none"}" title="Deal type — from the Deal Tracker (read-only)">${t?esc(t):"—"}</span>`;
 }
 function statsSummary(d){
   const s=d.stats;if(!s)return"";
@@ -876,16 +888,10 @@ function counter(label,key,val){
 function openStats(id){
   const body=()=>{const d=ST.deals.find(x=>x.id===id),s=dealStats(d);
     const cur=String(d.dealType||"").trim();
-    const base=DEAL_TYPES.slice();if(cur&&!base.includes(cur))base.unshift(cur);
-    const typeOpts=`<option value="" ${cur?"":"selected"}>— none —</option>`+
-      base.map(t=>`<option value="${esc(t)}" ${t===cur?"selected":""}>${esc(t)}</option>`).join("");
     return `<h3>Deal stats — ${esc(d.addr)}</h3>
       <div class="field" style="margin-top:2px"><label>Deal type</label>
-        <div class="dtype-row">
-          <select id="dtype_sel" class="dtype-sel">${typeOpts}</select>
-          <button class="btn sm ghost" id="dtype_edit" title="Add a custom deal type">&#9998;</button>
-        </div>
-        <div class="dtype-hint">CASH, NOV, SUB2, S/FI, 1HO… &mdash; NOV deals blast as Pics &amp; Live On Market.</div>
+        <div class="dtype-ro${cur?(isNov(d)?" nov":""):" none"}">${cur?esc(cur):"—"}<span class="dtype-ro-src">from Deal Tracker</span></div>
+        <div class="dtype-hint">Pulled from the sheet's Deal Type column (read-only). NOV deals blast as Pics &amp; Live On Market.</div>
       </div>
       <div class="stat-rows">
         ${counter("Walkthroughs","walk",s.walk)}
@@ -900,10 +906,6 @@ function openStats(id){
   const bg=w.parentElement;
   bg.addEventListener("click",e=>{if(e.target===bg||e.target.hasAttribute("data-close"))render();});
   const wire=()=>{
-    const dsel=w.querySelector("#dtype_sel");
-    if(dsel)dsel.onchange=()=>{const d=ST.deals.find(x=>x.id===id);d.dealType=dsel.value;save("deals");render();w.innerHTML=body();wire();};
-    const dedit=w.querySelector("#dtype_edit");
-    if(dedit)dedit.onclick=()=>{const d=ST.deals.find(x=>x.id===id);const v=prompt("Deal type for "+d.addr+" (e.g. CASH, NOV, SUB2, S/FI, 1HO):",d.dealType||"");if(v===null)return;d.dealType=v.trim().toUpperCase();save("deals");render();w.innerHTML=body();wire();toast(d.dealType?("Deal type set — "+d.dealType):"Deal type cleared");};
     w.querySelectorAll(".stepper").forEach(b=>b.onclick=()=>{const d=ST.deals.find(x=>x.id===id),s=dealStats(d);s[b.dataset.k]=Math.max(0,(s[b.dataset.k]||0)+(+b.dataset.inc));save("deals");w.innerHTML=body();wire();});
     const add=w.querySelector("#fb_add"),inp=w.querySelector("#fb_in");
     if(add)add.onclick=()=>{const v=inp.value.trim();if(!v)return;const d=ST.deals.find(x=>x.id===id),s=dealStats(d);s.feedback.unshift({text:v,at:Date.now()});save("deals");w.innerHTML=body();wire();};
@@ -948,7 +950,7 @@ function ago(t){if(!t)return"";const m=(Date.now()-t)/6e4;if(m<1)return"just now
 function renderCascade(){
   const body=$("#cascadeBody");
   const live=DEALS.filter(isLive);
-  if(!live.length){body.innerHTML=`<div class="empty"><h3>Nothing to blast yet</h3><p>Add deals and they line up here so you can walk each one through the blast flow — VIP first, then Investorbase, Agents, and Facebook.</p><button class="btn" onclick="addDeal()">+ Add deal</button></div>`;return;}
+  if(!live.length){body.innerHTML=`<div class="empty"><h3>Nothing to blast yet</h3><p>Add deals and they line up here so you can walk each one through the blast flow — VIP first, then InvestorBase, Agents, and Facebook.</p><button class="btn" onclick="addDeal()">+ Add deal</button></div>`;return;}
   const list=live.slice().sort((a,b)=>
     (isAlarm(a)?1:0)-(isAlarm(b)?1:0)||                 // FUCKED UP / Price Drop always sink to the bottom
     (b.isNew?1:0)-(a.isNew?1:0)||                       // NEW deals float to the top
@@ -1295,6 +1297,7 @@ async function syncTracker(silent){
           if(row.sr!=null&&String(row.sr).trim())ex.sr=String(row.sr).trim();   // mirror Sr. ACQ from the sheet
           if(row.title!=null&&String(row.title).trim())ex.title=String(row.title).trim();   // mirror Title company
           if(row.coe!=null&&String(row.coe).trim())ex.coe=String(row.coe).trim();   // mirror COE date
+          {const _dt=dealTypeOf(row);if(_dt)ex.dealType=_dt;}   // mirror Deal Type from the sheet's Deal Type column
           if(row.cellNotes&&row.cellNotes.ADDRESS!=null)ex.addrNote=String(row.cellNotes.ADDRESS);}  // keep write-back pointer fresh
         if(kind==="sale"&&!row.cancelled){
           saleKeys.add(key);
@@ -1315,7 +1318,7 @@ async function syncTracker(silent){
             id:"t"+Date.now().toString(36)+Math.random().toString(36).slice(2,6),
             sheetRow:row.row,sheetAddr:row.address,
             contract:String(row.contract||""),isNew:true,sr:String(row.sr||"").trim(),
-            title:String(row.title||"").trim(),coe:String(row.coe||"").trim(),
+            title:String(row.title||"").trim(),coe:String(row.coe||"").trim(),dealType:dealTypeOf(row),
             addr:p.addr,city:p.city,st:p.st,zip:p.zip,
             status:deskStatusFor(row.status),tstatus:String(row.status||""),uc:ucOf(row),
             mktStart:deskStatusFor(row.status)==="Marketing"?mdy():"",
