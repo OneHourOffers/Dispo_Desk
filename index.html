@@ -336,8 +336,8 @@
     box-shadow:0 2px 7px rgba(30,138,110,.45)}
   .prog{display:flex;align-items:center;gap:9px;width:100%}
   .prog-track{flex:1;height:6px;background:var(--surface2);border-radius:3px;overflow:hidden;min-width:0}
-  .prog-fill{height:100%;background:linear-gradient(90deg,var(--money-dim),var(--money));border-radius:3px;transition:.2s}
-  .prog-pct{font-family:var(--mono);font-size:13px;color:var(--teal);font-weight:700;min-width:34px;text-align:right}
+  .prog-fill{height:100%;background:linear-gradient(90deg,#1fb877,#3ee88f);border-radius:3px;transition:.2s}
+  .prog-pct{font-family:var(--mono);font-size:13px;color:#37d989;font-weight:700;min-width:34px;text-align:right}
 
   /* mini flow (deal card footer) */
   .mini-flow{display:flex;gap:5px;align-items:center}
@@ -991,14 +991,14 @@ function renderCascade(){
           <div class="cdeal-id"><div class="cdeal-topline">${stars(d)}${ucMktTags(d)}</div>
             <div><div class="cdeal-addr">${esc(d.addr)}</div>
               <div class="cdeal-sub">${esc(d.city)} ${d.zip}${m.needs?'':' · '+kfmt(m.spread)+' spread'}</div>
-              <div class="chip-grid">${statusSelect(d)}${coeChip(d)}<span class="signed-chip${d.contract?'':' none'}">&#9998; Signed ${d.contract?esc(d.contract):"\u2014"}</span><label class="mkt-chip${d.mktStart?'':' none'}" title="Click to set / change the marketing start date">&#128227; Mkt ${d.mktStart?esc(d.mktStart)+" \u00b7 <b>"+daysMkt(d)+"d</b>":"\u2014"}<input type="date" class="mkt-date-in" value="${mkt2iso(d.mktStart)}" onchange="setMktDate('${d.id}',this.value)"></label>${titleChip(d)}${acqChip(d)}${dropboxChip(d)}</div>
+              <div class="chip-grid">${statusSelect(d)}${acqChip(d)}<span class="signed-chip${d.contract?'':' none'}">&#9998; Signed ${d.contract?esc(d.contract):"\u2014"}</span>${coeChip(d)}<label class="mkt-chip${d.mktStart?'':' none'}" title="Click to set / change the marketing start date">&#128227; Mkt ${d.mktStart?esc(d.mktStart)+" \u00b7 <b>"+daysMkt(d)+"d</b>":"\u2014"}<input type="date" class="mkt-date-in" value="${mkt2iso(d.mktStart)}" onchange="setMktDate('${d.id}',this.value)"></label>${titleChip(d)}${dropboxChip(d)}</div>
               ${statsSummary(d)}</div>
           </div>
           <div style="display:flex;flex-direction:column;gap:6px;align-items:stretch">${(()=>{
             const statsBtn=`<button class="btn ghost sm" onclick="openStats('${d.id}')">Stats</button>`;
             const newBtn=`<button class="new-badge ${d.isNew?"on":"off"}" title="${d.isNew?"Click to clear":"Click to flag NEW for dispo"}" onclick="toggleNew('${d.id}')">NEW</button>`;
             const dtypeBtn=dealTypeBadge(d);
-            return (d.isNew?newBtn+statsBtn:statsBtn+newBtn)+dtypeBtn;})()}
+            return d.isNew?(newBtn+statsBtn+dtypeBtn):(statsBtn+dtypeBtn+newBtn);})()}
           </div>
         </div>
         <div class="cdeal-flow">${blastFlow(d)}${progBar(d.id)}</div>
