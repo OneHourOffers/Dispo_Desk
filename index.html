@@ -333,11 +333,17 @@
   .cdeal-sub{color:var(--muted);font-size:11px;font-family:var(--mono);margin-top:3px}
   .cdeal-topline{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
   .price-tags{display:flex;gap:6px;flex-wrap:wrap}
-  .ptag{font-family:var(--mono);font-size:11px;font-weight:700;padding:3px 8px;border-radius:6px;display:inline-flex;align-items:center;gap:5px;white-space:nowrap;line-height:1}
-  .ptag s{font-size:8px;font-weight:700;letter-spacing:.5px;text-decoration:none;opacity:.7;text-transform:uppercase}
-  .ptag.uc{background:var(--surface2);color:var(--text)}
-  .ptag.mkt{background:var(--teal-dim);color:var(--teal)}
-  .ptag.mkt.unset{background:transparent;color:var(--faint);border:1px dashed var(--line2)}
+  .ptag{font-family:var(--mono);font-size:11.5px;font-weight:700;padding:4px 9px;border-radius:6px;display:inline-flex;align-items:center;gap:5px;white-space:nowrap;line-height:1}
+  .ptag s{font-size:8px;font-weight:800;letter-spacing:.5px;text-decoration:none;opacity:.85;text-transform:uppercase}
+  .ptag.uc{background:var(--accent-light);color:var(--navy);border:1px solid var(--accent-border)}
+  .ptag.mkt{background:var(--teal-dim);color:var(--teal);border:1px solid rgba(30,138,110,.30)}
+  .ptag.mkt.unset{background:#fdf3e0;color:var(--amber);border:1px dashed rgba(196,122,18,.5)}
+  .ptag .ptag-cur{opacity:.7}
+  .ptag.mkt.unset .ptag-cur{display:none}
+  .mkt-price-in{width:58px;border:0;background:transparent;color:inherit;font-family:var(--mono);font-size:11.5px;font-weight:700;padding:0;margin:0;outline:0}
+  .mkt-price-in::placeholder{color:inherit;opacity:.7;font-weight:700}
+  .mkt-price-in::-webkit-inner-spin-button,.mkt-price-in::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+  .cdeal.alarm .ptag.uc{background:#fff;border-color:rgba(192,57,43,.3)}
   .cdeal-prob{font-family:var(--mono);font-size:16px;font-weight:700;display:flex;flex-direction:column;align-items:flex-end;line-height:1;flex:0 0 auto}
   .cdeal-prob s{font-size:8px;color:var(--muted);text-decoration:none;text-transform:uppercase;letter-spacing:.5px;margin-top:3px}
   .cdeal-flow{display:flex;flex-direction:column;align-items:stretch;gap:10px;margin-top:auto;padding-top:14px}
@@ -723,6 +729,13 @@ function setMktDate(id,iso){
   else{const p=iso.split("-");d.mktStart=Number(p[1])+"/"+Number(p[2])+"/"+String(p[0]).slice(2);}
   save("deals");render();
 }
+// Daniel sets/adjusts the marketed (sell) price straight from the blast card.
+function setMktPrice(id,val){
+  const d=ST.deals.find(x=>x.id===id);if(!d)return;
+  const n=String(val==null?"":val).replace(/[^0-9.]/g,"");
+  d.mkt=n===""?null:+n;
+  save("deals");render();
+}
 //=================== DROPBOX LINK ===================
 function dropboxChip(d){
   if(!d.dropbox)return `<button class="dbx-chip none" title="Paste the Dropbox link for this deal" onclick="editDropbox('${d.id}')">&#128230; + Dropbox</button>`;
@@ -795,14 +808,15 @@ function setSheetStatus(id,val){
   const d=ST.deals.find(x=>x.id===id);if(!d)return;
   const old=d.tstatus;
   d.tstatus=val;d.status=deskStatusFor(val);
-  if(d.status==="Marketing"){d.isNew=false;if(!d.mktStart)d.mktStart=mdy();}  // marketed -> stamp start, clear NEW
+  if(d.status==="Marketing"){d.isNew=false;if(deskStatusFor(old)!=="Marketing")d.mktStart=mdy();}  // stamp the day it switched to Marketing, clear NEW
   if(d.status==="Need Pics")d.mktStart="";  // pulled back off market -> reset counter
   save("deals");render();
   if(old!==val)pushStatusToSheet(d,val);
 }
 // Manual (non-tracker) cards keep the desk's own statuses.
-function setStatus(id,val){const d=ST.deals.find(x=>x.id===id);if(!d)return;d.status=val;
-  if(val==="Marketing"&&!d.mktStart)d.mktStart=mdy();
+function setStatus(id,val){const d=ST.deals.find(x=>x.id===id);if(!d)return;
+  const was=d.status;d.status=val;
+  if(val==="Marketing"&&was!=="Marketing")d.mktStart=mdy();  // stamp the day it switched to Marketing
   if(val==="Need Pics")d.mktStart="";
   save("deals");render();}
 function statusSelect(d){
@@ -860,10 +874,10 @@ function stars(d,size){const s=size||"";return `<div class="stars ${s}" title="D
 function ucMktTags(d){
   const m=d.m;
   const uc=m.uc?kfmt(m.uc):"—";
-  const mk=m.mkt?kfmt(m.mkt):"—";
   return `<div class="price-tags">`+
-    `<span class="ptag uc" title="Under-contract (buy) price"><s>UC</s> ${uc}</span>`+
-    `<span class="ptag mkt${m.mkt?'':' unset'}" title="${m.mkt?'Marketed (sell) price':'Marketed price — Daniel to set'}"><s>MKT</s> ${mk}</span>`+
+    `<span class="ptag uc" title="Under-contract (buy) price · from the tracker"><s>UC</s> ${uc}</span>`+
+    `<label class="ptag mkt${m.mkt?'':' unset'}" title="Marketed (sell) price — Daniel can edit"><s>MKT</s><span class="ptag-cur">$</span>`+
+      `<input type="number" class="mkt-price-in" value="${m.mkt??''}" placeholder="set" onchange="setMktPrice('${d.id}',this.value)" onclick="event.stopPropagation()"></label>`+
     `</div>`;
 }
 function blastFlow(d){
@@ -890,7 +904,9 @@ function renderCascade(){
   const body=$("#cascadeBody");
   const live=DEALS.filter(isLive);
   if(!live.length){body.innerHTML=`<div class="empty"><h3>Nothing to blast yet</h3><p>Add deals and they line up here so you can walk each one through the blast flow — VIP first, then Investorbase, Agents, and Facebook.</p><button class="btn" onclick="addDeal()">+ Add deal</button></div>`;return;}
-  const list=live.slice().sort((a,b)=>(b.rating||0)-(a.rating||0)||progress(b.id)-progress(a.id)||b.m.proj-a.m.proj);
+  const list=live.slice().sort((a,b)=>
+    (isAlarm(a)?1:0)-(isAlarm(b)?1:0)||                 // FUCKED UP / Price Drop always sink to the bottom
+    (b.rating||0)-(a.rating||0)||progress(b.id)-progress(a.id)||b.m.proj-a.m.proj);
   const blastedCount=key=>live.filter(d=>isDone(d.id,key)).length;   // deals blasted via this channel
   body.innerHTML=`<div class="cascade-legend">${STAGES.map((s)=>`<span><i style="background:var(${s.v})"></i>${blastedCount(s.key)} ${s.name}</span>`).join("")}</div>`+
     `<div class="cgrid">`+list.map(d=>{const m=d.m;
@@ -1241,8 +1257,9 @@ async function syncTracker(silent){
               ex.status=deskStatusFor(row.status);ex.tstatus=String(row.status||"");restored++;
             }else if(!DEAD_STATES.includes(ex.status)&&String(ex.tstatus||"")!==String(row.status||"")){
               // sheet status changed externally -> reflect it on the card
+              const wasMkt=ex.status==="Marketing";
               ex.tstatus=String(row.status||"");ex.status=deskStatusFor(row.status);restatused++;
-              if(ex.status==="Marketing"){ex.isNew=false;if(!ex.mktStart)ex.mktStart=mdy();}
+              if(ex.status==="Marketing"){ex.isNew=false;if(!wasMkt)ex.mktStart=mdy();}  // stamp the day it switched to Marketing
               if(ex.status==="Need Pics")ex.mktStart="";
             }
             return;
@@ -1366,7 +1383,7 @@ async function pollDispo(){
   }catch(e){/* offline / transient — ignore, next tick retries */}
 }
 
-Object.assign(window,{toggleBlast,setRating,setStatus,setSheetStatus,toggleNew,setMktDate,editDropbox,copyDropbox,editAcq,editTitle,setCoeDate,openStats,setDetail,setMktTab,printBrochure,copyBrochure,delBuyer,copyCopy,setMkt,switchView,addDeal,editDeal,loadSamples,gotoBuyers});
+Object.assign(window,{toggleBlast,setRating,setStatus,setSheetStatus,toggleNew,setMktDate,setMktPrice,editDropbox,copyDropbox,editAcq,editTitle,setCoeDate,openStats,setDetail,setMktTab,printBrochure,copyBrochure,delBuyer,copyCopy,setMkt,switchView,addDeal,editDeal,loadSamples,gotoBuyers});
 
 (async()=>{
   await load();render();
