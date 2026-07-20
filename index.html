@@ -205,14 +205,14 @@
   .dtype-btn{display:inline-block;padding:6px 10px;border-radius:8px;font-family:var(--mono);font-weight:800;
     font-size:11.5px;text-align:center;letter-spacing:.06em;text-transform:uppercase;line-height:1;cursor:pointer;
     background:var(--accent-light);color:var(--navy);border:1px solid var(--accent-border)}
-  .dtype-btn.nov{background:var(--purple-dim);color:var(--purple);border-color:rgba(107,72,200,.25)}
+  .dtype-btn.nov{background:#1e6ab4;color:#fff;border-color:#1e6ab4}
   .dtype-btn.none{background:none;color:var(--faint);border:1px dashed var(--line2);font-weight:700;letter-spacing:.02em}
   .dtype-btn.ro{cursor:default}   /* read-only: pulled from the tracker, not clickable */
   /* Deal-type read-only display inside the Stats modal */
   .dtype-ro{display:flex;align-items:center;gap:10px;background:var(--surface2);border:1px solid var(--line2);
     border-radius:9px;padding:9px 12px;font-family:var(--mono);font-weight:800;font-size:14px;letter-spacing:.04em;
     text-transform:uppercase;color:var(--navy)}
-  .dtype-ro.nov{color:var(--purple)}
+  .dtype-ro.nov{color:#1e6ab4}
   .dtype-ro.none{color:var(--faint);font-weight:600}
   .dtype-ro-src{margin-left:auto;font-family:var(--body);font-weight:500;font-size:11px;letter-spacing:0;
     text-transform:none;color:var(--faint)}
@@ -343,6 +343,17 @@
   .cdeal.alarm .cdeal-sub,.cdeal.alarm .cstats{color:#a24236}
   .cdeal.alarm .status-sel{background:#c0392b !important;color:#fff !important;border-color:#c0392b}
   .cdeal.alarm .status-sel option{background:var(--surface);color:var(--text)}
+  /* Novation deals — whole card goes light blue so novations are easy to color-code and spot.
+     Re-set the scoped tokens so every descendant recolors to a legible blue on the light card. */
+  .cdeal.nov:not(.alarm){background:linear-gradient(180deg,#e8f1fc,#cfe1f6);border:2px solid #1e6ab4;
+    box-shadow:0 2px 12px rgba(30,106,180,.22);
+    --text:#12406e; --muted:#2f5f89; --faint:#5a80a6;
+    --surface2:#eaf2fc; --surface3:#c6dbf1; --line:rgba(30,106,180,.18); --line2:rgba(30,106,180,.32)}
+  .cdeal.nov:not(.alarm) .cdeal-addr{color:#0f3a63}
+  .cdeal.nov:not(.alarm) .cdeal-sub,.cdeal.nov:not(.alarm) .cstats{color:#2f5f89}
+  .cdeal.nov:not(.alarm) .fnode.done .flabel{color:#0f3a63}
+  .cdeal.nov:not(.alarm) .ptag.uc{background:#fff;border-color:rgba(30,106,180,.30)}
+  .cdeal.nov:not(.alarm) .btn.ghost{border-color:rgba(30,106,180,.35);color:#1e6ab4}
   .cdeal-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
   .cdeal-id{display:flex;flex-direction:column;gap:6px;min-width:0}
   .cdeal-addr{font-family:var(--disp);font-weight:700;font-size:14px;display:flex;align-items:center;gap:7px;flex-wrap:wrap;color:var(--text)}
@@ -958,7 +969,7 @@ function renderCascade(){
   const blastedCount=key=>live.filter(d=>isDone(d.id,key)).length;   // deals blasted via this channel
   body.innerHTML=`<div class="cascade-legend">${STAGES.map((s)=>`<span><i style="background:var(${s.v})"></i>${blastedCount(s.key)} ${s.name}</span>`).join("")}</div>`+
     `<div class="cgrid">`+list.map(d=>{const m=d.m;
-      return `<div class="cdeal${d.isNew?' is-new':''}${isAlarm(d)?' alarm':''}">
+      return `<div class="cdeal${d.isNew?' is-new':''}${isNov(d)?' nov':''}${isAlarm(d)?' alarm':''}">
         <div class="cdeal-head">
           <div class="cdeal-id"><div class="cdeal-topline">${stars(d)}${ucMktTags(d)}</div>
             <div><div class="cdeal-addr">${esc(d.addr)}</div>
@@ -1374,7 +1385,7 @@ function buildShared(){
     const sk=stableKey(d);
     if(ST.blast[d.id]&&Object.keys(ST.blast[d.id]).length)blast[sk]=ST.blast[d.id];
     if(d.src==="tracker")
-      overlay[normAddr(d.addr)]={rating:d.rating||0,isNew:!!d.isNew,dropbox:d.dropbox||"",mktStart:d.mktStart||"",stats:d.stats||null};
+      overlay[normAddr(d.addr)]={rating:d.rating||0,isNew:!!d.isNew,dropbox:d.dropbox||"",mktStart:d.mktStart||"",mkt:(d.mkt==null?null:d.mkt),stats:d.stats||null};
   });
   const manual=ST.deals.filter(d=>d.src!=="tracker").map(d=>({...d}));
   return {overlay,blast,manual,buyers:ST.buyers||[]};
@@ -1395,6 +1406,7 @@ function applyShared(shared){
     const o=ov[normAddr(d.addr)];if(!o)return;
     d.rating=o.rating||0; d.isNew=!!o.isNew; d.dropbox=o.dropbox||"";
     if(o.mktStart)d.mktStart=o.mktStart;
+    if("mkt" in o)d.mkt=(o.mkt==null?null:o.mkt);   // mirror Daniel's marketed (sell) price to everyone
     if(o.stats)d.stats=o.stats;
   });
   // Blast progress: rebuild from shared, mapping stable keys back to local ids.
