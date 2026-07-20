@@ -380,7 +380,7 @@
   .cdeal-addr{font-family:var(--disp);font-weight:700;font-size:13.5px;color:var(--text);margin-top:5px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .cdeal-sub{color:var(--muted);font-size:11px;font-family:var(--mono);margin-top:3px}
   .cdeal-topline{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-  .price-tags{display:flex;gap:6px;flex-wrap:nowrap;margin-top:6px}
+  .price-tags{display:flex;gap:6px;flex-wrap:nowrap;margin-top:2px}
   .ptag{font-family:var(--mono);font-size:11.5px;font-weight:700;padding:4px 9px;border-radius:6px;display:inline-flex;align-items:center;gap:5px;white-space:nowrap;line-height:1}
   .ptag-money{display:inline-flex;align-items:center}   /* keep $ tight against the number, like UC */
   .ptag s{font-size:8px;font-weight:800;letter-spacing:.5px;text-decoration:none;opacity:.7;text-transform:uppercase}
@@ -998,7 +998,7 @@ function renderCascade(){
     `<div class="cgrid">`+list.map(d=>{const m=d.m;
       return `<div class="cdeal${d.isNew?' is-new':''}${isNov(d)?' nov':''}${isAlarm(d)?' alarm':''}">
         <div class="cdeal-head">
-          <div class="cdeal-id">${stars(d)}</div>
+          <div class="cdeal-id">${stars(d)}${ucMktTags(d)}</div>
           <div class="cdeal-actions">${(()=>{
             const statsBtn=`<button class="btn ghost sm" onclick="openStats('${d.id}')">Stats</button>`;
             const newBtn=`<button class="new-badge ${d.isNew?"on":"off"}" title="${d.isNew?"Click to clear":"Click to flag NEW for dispo"}" onclick="toggleNew('${d.id}')">NEW</button>`;
@@ -1006,7 +1006,6 @@ function renderCascade(){
             return newBtn+dtypeBtn+statsBtn;})()}
           </div>
         </div>
-        ${ucMktTags(d)}
         <div class="cdeal-addr" title="${esc(d.addr)}">${esc(d.addr)}</div>
         <div class="cdeal-sub">${esc(d.city)} ${d.zip}${m.needs?'':' · '+kfmt(m.spread)+' spread'}</div>
         ${statsSummary(d)}
