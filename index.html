@@ -320,6 +320,12 @@
   .fnode.done .flabel{color:var(--text)}
   .fbar{flex:1;height:2px;background:var(--line2);margin-top:13px;min-width:4px}
   .fbar.done{background:var(--money)}
+  /* "LIVE" pill centered on the connector once a novation is 100% blasted */
+  .fbar.golive{position:relative;overflow:visible}
+  .fbar.golive span{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+    background:var(--money);color:#fff;font-family:var(--mono);font-weight:800;font-size:9.5px;
+    letter-spacing:.12em;padding:3px 9px;border-radius:20px;white-space:nowrap;line-height:1;
+    box-shadow:0 1px 5px rgba(30,138,110,.4)}
   .prog{display:flex;align-items:center;gap:9px;width:100%}
   .prog-track{flex:1;height:6px;background:var(--surface2);border-radius:3px;overflow:hidden;min-width:0}
   .prog-fill{height:100%;background:linear-gradient(90deg,var(--money-dim),var(--money));border-radius:3px;transition:.2s}
@@ -345,7 +351,7 @@
   .cdeal.alarm .status-sel option{background:var(--surface);color:var(--text)}
   /* Novation deals — whole card goes light blue so novations are easy to color-code and spot.
      Re-set the scoped tokens so every descendant recolors to a legible blue on the light card. */
-  .cdeal.nov:not(.alarm){background:linear-gradient(180deg,#e8f1fc,#cfe1f6);border:2px solid #1e6ab4;
+  .cdeal.nov:not(.alarm){background:linear-gradient(180deg,#c7ddf3,#a9c9e9);border:2px solid #1e6ab4;
     box-shadow:0 2px 12px rgba(30,106,180,.22);
     --text:#12406e; --muted:#2f5f89; --faint:#5a80a6;
     --surface2:#eaf2fc; --surface3:#c6dbf1; --line:rgba(30,106,180,.18); --line2:rgba(30,106,180,.32)}
@@ -942,7 +948,11 @@ function blastFlow(d){
   const SG=stagesFor(d);
   SG.forEach((s,i)=>{
     const isD=isDone(d.id,s.key);
-    if(i>0)h+=`<div class="fbar ${isDone(d.id,SG[i-1].key)&&isD?'done':''}"></div>`;
+    if(i>0){
+      const barDone=isDone(d.id,SG[i-1].key)&&isD;
+      const goLive=isNov(d)&&barDone;   // novation fully blasted -> show LIVE on the Pics→Live connector
+      h+=`<div class="fbar ${barDone?'done':''}${goLive?' golive':''}">${goLive?'<span>LIVE</span>':''}</div>`;
+    }
     const cls=isD?'done':'open';
     const tip=isD?' · blasted '+ago(ST.blast[d.id][s.key]):' · click to mark blasted';
     h+=`<div class="fnode ${cls}" style="--c:var(${s.v})" onclick="toggleBlast('${d.id}','${s.key}')" title="${s.name}${tip}">
@@ -964,7 +974,8 @@ function renderCascade(){
   if(!live.length){body.innerHTML=`<div class="empty"><h3>Nothing to blast yet</h3><p>Add deals and they line up here so you can walk each one through the blast flow — VIP first, then InvestorBase, Agents, and Facebook.</p><button class="btn" onclick="addDeal()">+ Add deal</button></div>`;return;}
   const list=live.slice().sort((a,b)=>
     (isAlarm(a)?1:0)-(isAlarm(b)?1:0)||                 // FUCKED UP / Price Drop always sink to the bottom
-    (b.isNew?1:0)-(a.isNew?1:0)||                       // NEW deals float to the top
+    (isNov(a)?1:0)-(isNov(b)?1:0)||                     // novations group below the regular (cash, etc.) deals
+    (b.isNew?1:0)-(a.isNew?1:0)||                       // NEW deals float to the top (within each group)
     (b.rating||0)-(a.rating||0)||progress(b.id)-progress(a.id)||b.m.proj-a.m.proj);
   const blastedCount=key=>live.filter(d=>isDone(d.id,key)).length;   // deals blasted via this channel
   body.innerHTML=`<div class="cascade-legend">${STAGES.map((s)=>`<span><i style="background:var(${s.v})"></i>${blastedCount(s.key)} ${s.name}</span>`).join("")}</div>`+
