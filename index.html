@@ -359,10 +359,10 @@
   .cdeal.alarm .status-sel option{background:var(--surface);color:var(--text)}
   /* Novation deals — whole card goes light blue so novations are easy to color-code and spot.
      Re-set the scoped tokens so every descendant recolors to a legible blue on the light card. */
-  .cdeal.nov:not(.alarm){background:linear-gradient(180deg,#c7ddf3,#a9c9e9);border:2px solid #1e6ab4;
+  .cdeal.nov:not(.alarm){background:linear-gradient(180deg,#a7c8e8,#87afd9);border:2px solid #1e6ab4;
     box-shadow:0 2px 12px rgba(30,106,180,.22);
-    --text:#12406e; --muted:#2f5f89; --faint:#5a80a6;
-    --surface2:#eaf2fc; --surface3:#c6dbf1; --line:rgba(30,106,180,.18); --line2:rgba(30,106,180,.32)}
+    --text:#0e3255; --muted:#244b6f; --faint:#3f6389;
+    --surface2:#e4eefb; --surface3:#bcd4ee; --line:rgba(20,60,100,.22); --line2:rgba(20,60,100,.34)}
   .cdeal.nov:not(.alarm) .cdeal-addr{color:#0f3a63}
   .cdeal.nov:not(.alarm) .cdeal-sub,.cdeal.nov:not(.alarm) .cstats{color:#2f5f89}
   .cdeal.nov:not(.alarm) .fnode.done .flabel{color:#0f3a63}
@@ -654,15 +654,13 @@ function renderKpis(){
   const raw=d=>String(d.tstatus||d.status||"");
   const cnt=re=>live.filter(d=>re.test(raw(d))).length;
   const needPics=cnt(/pic/i), marketing=cnt(/market/i), priceDrop=cnt(/price\s*drop/i);
-  // Total blast = every blast slot completed across all deals, out of all slots.
-  const blastDone=live.reduce((a,d)=>a+doneCount(d.id),0), blastPoss=live.reduce((a,d)=>a+stagesFor(d).length,0);
   const scored=live.filter(d=>!d.m.needs);
   const totalSpread=scored.reduce((a,d)=>a+d.m.spread,0);
   const projProfit=totalSpread*PROFIT_FACTOR;
+  const actualRev=projProfit*0.5;   // Actual Projected Revenue = half of Proj profit
   $("#kpis").innerHTML=[[live.length,"Total deals"],[needPics,"Need Pics"],[marketing,"Marketing"],[priceDrop,"Price Drop"],
-    [blastPoss?Math.round(blastDone/blastPoss*100)+"%":"—","Total blast"],
-    [scored.length?kfmt(totalSpread):"—","Total spread"],
-    [scored.length?kfmt(projProfit):"—","Proj profit"]]
+    [scored.length?kfmt(projProfit):"—","Proj profit"],
+    [scored.length?kfmt(actualRev):"—","Actual Projected Revenue"]]
     .map(([n,l])=>`<div class="kpi"><div class="n">${n}</div><div class="l">${l}</div></div>`).join("");
 }
 
