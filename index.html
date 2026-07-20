@@ -199,7 +199,7 @@
   .coe-date-in{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;border:0;padding:0}
   /* 2-up chip grid on each deal card (Status-COE / Signed-Mkt / Title-ACQ) */
   .status-row{margin:8px 29px 0}   /* status bar keeps its width: aligned to the VIP/Facebook node centers */
-  .chip-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:6px 58px 0;align-items:start;justify-items:stretch}   /* small chips sit one full node in — between the inner edges of the VIP and Facebook nodes */
+  .chip-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:6px 34px 0;align-items:start;justify-items:stretch}   /* small chips inset a bit (a touch narrower than the status bar) so they don't wrap to 2 rows */
   .chip-grid>*{width:100%;min-width:0;box-sizing:border-box;white-space:normal;line-height:1.3;overflow:visible;text-align:center;justify-content:center}
   .status-row .status-sel{width:100%;max-width:none;padding:7px 9px;font-size:12px;letter-spacing:.4px;text-align:center;font-weight:800}   /* full-width status bar within its inset row */
   /* Deeper, filled status colors so the status button really stands out */
@@ -382,13 +382,13 @@
   .cdeal-topline{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
   .price-tags{display:flex;gap:6px;flex-wrap:wrap}
   .ptag{font-family:var(--mono);font-size:11.5px;font-weight:700;padding:4px 9px;border-radius:6px;display:inline-flex;align-items:center;gap:5px;white-space:nowrap;line-height:1}
-  .ptag s{font-size:8px;font-weight:800;letter-spacing:.5px;text-decoration:none;opacity:.85;text-transform:uppercase}
-  .ptag.uc{background:var(--accent-light);color:var(--navy);border:1px solid var(--accent-border)}
-  .ptag.mkt{background:var(--teal-dim);color:var(--teal);border:1px solid rgba(30,138,110,.30)}
-  .ptag.mkt.unset{background:#fdf3e0;color:var(--amber);border:1px dashed rgba(196,122,18,.5)}
-  .ptag .ptag-cur{opacity:.7}
+  .ptag s{font-size:8px;font-weight:800;letter-spacing:.5px;text-decoration:none;opacity:.7;text-transform:uppercase}
+  .ptag.uc{background:#e5eef9;color:#0f2338;border:1px solid rgba(30,65,100,.45)}
+  .ptag.mkt{background:#dcf1e8;color:#0b4936;border:1px solid rgba(30,138,110,.5)}
+  .ptag.mkt.unset{background:#fbeac6;color:#6f430a;border:1px dashed rgba(196,122,18,.6)}
+  .ptag .ptag-cur{opacity:.85}
   .ptag.mkt.unset .ptag-cur{display:none}
-  .mkt-price-in{width:58px;border:0;background:transparent;color:inherit;font-family:var(--mono);font-size:11.5px;font-weight:700;padding:0;margin:0;outline:0}
+  .mkt-price-in{width:72px;border:0;background:transparent;color:inherit;font-family:var(--mono);font-size:11.5px;font-weight:700;padding:0;margin:0;outline:0}
   .mkt-price-in::placeholder{color:inherit;opacity:.7;font-weight:700}
   .mkt-price-in::-webkit-inner-spin-button,.mkt-price-in::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
   .cdeal.alarm .ptag.uc{background:#fff;border-color:rgba(192,57,43,.3)}
@@ -949,11 +949,12 @@ function stars(d,size){const s=size||"";return `<div class="stars ${s}" title="D
 // MKT is Daniel's number — shows a dashed placeholder until he sets it.
 function ucMktTags(d){
   const m=d.m;
-  const uc=m.uc?kfmt(m.uc):"—";
+  const uc=m.uc!=null?"$"+Math.round(m.uc).toLocaleString():"—";
+  const mktVal=m.mkt!=null?Math.round(m.mkt).toLocaleString():"";
   return `<div class="price-tags">`+
     `<span class="ptag uc" title="Under-contract (buy) price · from the tracker"><s>UC</s> ${uc}</span>`+
     `<label class="ptag mkt${m.mkt?'':' unset'}" title="Marketed (sell) price — Daniel can edit"><s>MKT</s><span class="ptag-cur">$</span>`+
-      `<input type="number" class="mkt-price-in" value="${m.mkt??''}" placeholder="set" onchange="setMktPrice('${d.id}',this.value)" onclick="event.stopPropagation()"></label>`+
+      `<input type="text" inputmode="numeric" class="mkt-price-in" value="${mktVal}" placeholder="set" onchange="setMktPrice('${d.id}',this.value)" onclick="event.stopPropagation()"></label>`+
     `</div>`;
 }
 function blastFlow(d){
@@ -1009,7 +1010,7 @@ function renderCascade(){
           </div>
         </div>
         <div class="status-row">${statusSelect(d)}</div>
-        <div class="chip-grid">${acqChip(d)}<span class="signed-chip${d.contract?'':' none'}">&#9998; Signed ${d.contract?esc(d.contract):"—"}</span>${coeChip(d)}<label class="mkt-chip${d.mktStart?'':' none'}" title="Click to set / change the marketing start date">&#128227; Mkt ${d.mktStart?esc(d.mktStart)+" · <b>"+daysMkt(d)+"d</b>":"—"}<input type="date" class="mkt-date-in" value="${mkt2iso(d.mktStart)}" onchange="setMktDate('${d.id}',this.value)"></label>${titleChip(d)}${dropboxChip(d)}</div>
+        <div class="chip-grid">${acqChip(d)}<span class="signed-chip${d.contract?'':' none'}">&#9998; Signed ${d.contract?esc(d.contract):"—"}</span>${coeChip(d)}<label class="mkt-chip${d.mktStart?'':' none'}" title="Click to set / change the marketing start date">&#128227; Mkt ${d.mktStart?esc(d.mktStart)+" · <b>"+daysMkt(d)+"d</b>":"—"}<input type="date" class="mkt-date-in" value="${mkt2iso(d.mktStart)}" onchange="setMktDate('${d.id}',this.value)" onclick="event.stopPropagation();try{this.showPicker()}catch(e){}"></label>${titleChip(d)}${dropboxChip(d)}</div>
         <div class="cdeal-flow">${blastFlow(d)}${progBar(d.id)}</div>
       </div>`;
     }).join("")+`</div>`;
