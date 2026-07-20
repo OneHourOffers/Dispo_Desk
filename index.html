@@ -377,11 +377,12 @@
   .cdeal-actions .dtype-btn{grid-column:2;grid-row:1}
   .cdeal-actions .btn{grid-column:2;grid-row:2}
   .cdeal-id{display:flex;flex-direction:column;gap:6px;min-width:0}
-  .cdeal-addr{font-family:var(--disp);font-weight:700;font-size:14px;display:flex;align-items:center;gap:7px;flex-wrap:wrap;color:var(--text)}
+  .cdeal-addr{font-family:var(--disp);font-weight:700;font-size:13.5px;color:var(--text);margin-top:5px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .cdeal-sub{color:var(--muted);font-size:11px;font-family:var(--mono);margin-top:3px}
   .cdeal-topline{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-  .price-tags{display:flex;gap:6px;flex-wrap:wrap}
+  .price-tags{display:flex;gap:6px;flex-wrap:nowrap;margin-top:6px}
   .ptag{font-family:var(--mono);font-size:11.5px;font-weight:700;padding:4px 9px;border-radius:6px;display:inline-flex;align-items:center;gap:5px;white-space:nowrap;line-height:1}
+  .ptag-money{display:inline-flex;align-items:center}   /* keep $ tight against the number, like UC */
   .ptag s{font-size:8px;font-weight:800;letter-spacing:.5px;text-decoration:none;opacity:.7;text-transform:uppercase}
   .ptag.uc{background:#e5eef9;color:#0f2338;border:1px solid rgba(30,65,100,.45)}
   .ptag.mkt{background:#dcf1e8;color:#0b4936;border:1px solid rgba(30,138,110,.5)}
@@ -953,8 +954,8 @@ function ucMktTags(d){
   const mktVal=m.mkt!=null?Math.round(m.mkt).toLocaleString():"";
   return `<div class="price-tags">`+
     `<span class="ptag uc" title="Under-contract (buy) price · from the tracker"><s>UC</s> ${uc}</span>`+
-    `<label class="ptag mkt${m.mkt?'':' unset'}" title="Marketed (sell) price — Daniel can edit"><s>MKT</s><span class="ptag-cur">$</span>`+
-      `<input type="text" inputmode="numeric" class="mkt-price-in" value="${mktVal}" placeholder="set" onchange="setMktPrice('${d.id}',this.value)" onclick="event.stopPropagation()"></label>`+
+    `<label class="ptag mkt${m.mkt?'':' unset'}" title="Marketed (sell) price — Daniel can edit"><s>MKT</s><span class="ptag-money"><span class="ptag-cur">$</span>`+
+      `<input type="text" inputmode="numeric" class="mkt-price-in" value="${mktVal}" placeholder="set" onchange="setMktPrice('${d.id}',this.value)" onclick="event.stopPropagation()"></span></label>`+
     `</div>`;
 }
 function blastFlow(d){
@@ -997,11 +998,7 @@ function renderCascade(){
     `<div class="cgrid">`+list.map(d=>{const m=d.m;
       return `<div class="cdeal${d.isNew?' is-new':''}${isNov(d)?' nov':''}${isAlarm(d)?' alarm':''}">
         <div class="cdeal-head">
-          <div class="cdeal-id"><div class="cdeal-topline">${stars(d)}${ucMktTags(d)}</div>
-            <div><div class="cdeal-addr">${esc(d.addr)}</div>
-              <div class="cdeal-sub">${esc(d.city)} ${d.zip}${m.needs?'':' · '+kfmt(m.spread)+' spread'}</div>
-              ${statsSummary(d)}</div>
-          </div>
+          <div class="cdeal-id">${stars(d)}</div>
           <div class="cdeal-actions">${(()=>{
             const statsBtn=`<button class="btn ghost sm" onclick="openStats('${d.id}')">Stats</button>`;
             const newBtn=`<button class="new-badge ${d.isNew?"on":"off"}" title="${d.isNew?"Click to clear":"Click to flag NEW for dispo"}" onclick="toggleNew('${d.id}')">NEW</button>`;
@@ -1009,6 +1006,10 @@ function renderCascade(){
             return newBtn+dtypeBtn+statsBtn;})()}
           </div>
         </div>
+        ${ucMktTags(d)}
+        <div class="cdeal-addr" title="${esc(d.addr)}">${esc(d.addr)}</div>
+        <div class="cdeal-sub">${esc(d.city)} ${d.zip}${m.needs?'':' · '+kfmt(m.spread)+' spread'}</div>
+        ${statsSummary(d)}
         <div class="status-row">${statusSelect(d)}</div>
         <div class="chip-grid">${acqChip(d)}<span class="signed-chip${d.contract?'':' none'}">&#9998; Signed ${d.contract?esc(d.contract):"—"}</span>${coeChip(d)}<label class="mkt-chip${d.mktStart?'':' none'}" title="Click to set / change the marketing start date">&#128227; Mkt ${d.mktStart?esc(d.mktStart)+" · <b>"+daysMkt(d)+"d</b>":"—"}<input type="date" class="mkt-date-in" value="${mkt2iso(d.mktStart)}" onchange="setMktDate('${d.id}',this.value)" onclick="event.stopPropagation();try{this.showPicker()}catch(e){}"></label>${titleChip(d)}${dropboxChip(d)}</div>
         <div class="cdeal-flow">${blastFlow(d)}${progBar(d.id)}</div>
